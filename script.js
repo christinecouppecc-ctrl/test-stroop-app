@@ -162,6 +162,20 @@ let essaisComptabilisesNBack = 0;
 let nonCiblesIgnoreesNBack = 0;
 let questionVerrouillee = false;
 let timeoutQuestion = null;
+const toursParJeu = {
+    stroop: 10,
+    formes: 10,
+    flanker: 10,
+    'ax-cpt': 10,
+    nback: 10
+};
+
+roundsInput.addEventListener('input', () => {
+    const nombre = parseInt(roundsInput.value, 10);
+    if (!isNaN(nombre) && nombre >= 5 && nombre <= 50) {
+        toursParJeu[jeuActif] = nombre;
+    }
+});
 
 function calculerTendanceReaction(reactions) {
     if (!Array.isArray(reactions) || reactions.length < 2) return 'indisponible';
@@ -237,6 +251,7 @@ function afficherConfigurationJeu() {
         ? configuration.prompt.replace('N essais', 'N-' + niveauNBack + ' essais')
         : configuration.prompt;
     nbackOptions.classList.toggle('hidden', jeuActif !== 'nback');
+    roundsInput.value = toursParJeu[jeuActif];
     btnBackGames.textContent = jeuActif === 'formes'
         ? '← Choisir la version'
         : '← Choisir un jeu';
@@ -399,6 +414,7 @@ btnStart.onclick = () => {
     if (isNaN(nbTours) || nbTours < 5) nbTours = 5;
     if (nbTours > 50) nbTours = 50;
     roundsInput.value = nbTours;
+    toursParJeu[jeuActif] = nbTours;
 
     tourActuel = 0;
     score = 0;
