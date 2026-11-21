@@ -41,8 +41,8 @@ const JEUX = {
     nback: {
         nom: 'Tâche N-Back',
         titreResultats: 'Résultats de la tâche N-Back',
-        instructions: 'Mémorisez les stimuli. Appuyez sur « Identique » uniquement si le stimulus correspond à celui présenté N essais auparavant; sinon, ne faites rien. Chaque stimulus change après DUREE s. Aucun temps de réaction n’est mesuré.',
-        prompt: 'Appuyez sur « Identique » si le stimulus correspond.'
+        instructions: 'Mémorisez les stimuli. Appuyez sur « Identique » uniquement si le stimulus correspond à celui présenté N essais auparavant; sinon, ne faites rien. Un oubli de cible ou un clic sur une non-cible est un échec; une non-cible ignorée est exclue des taux. Chaque stimulus change après DUREE s. Aucun temps de réaction n’est mesuré.',
+        prompt: 'Appuyez sur « Identique » pour une cible; une non-cible ignorée n’est pas comptée.'
     }
 };
 
@@ -112,6 +112,7 @@ const resultGame = document.getElementById('result-game');
 const resultScore = document.getElementById('result-score');
 const resultAccuracy = document.getElementById('result-accuracy');
 const resultFailure = document.getElementById('result-failure');
+const resultNeutral = document.getElementById('result-neutral');
 const resultReaction = document.getElementById('result-reaction');
 const resultTrend = document.getElementById('result-trend');
 const resultRecord = document.getElementById('result-record');
@@ -156,6 +157,9 @@ let essaisAxCpt = [];
 let sequenceNBack = [];
 let indexSequenceNBack = 0;
 let cibleNBackActuelle = false;
+let echecsNBack = 0;
+let essaisComptabilisesNBack = 0;
+let nonCiblesIgnoreesNBack = 0;
 let questionVerrouillee = false;
 let timeoutQuestion = null;
 
@@ -329,7 +333,8 @@ function partiesDe(nom) {
             return partie.jeu === 'nback' &&
                 Number(partie.niveauNBack) === niveauNBack &&
                 partie.typeStimulusNBack === typeStimulusNBack &&
-                Number(partie.dureeNBack || 3) === dureeNBack;
+                Number(partie.dureeNBack || 3) === dureeNBack &&
+                partie.versionScoringNBack === 2;
         }
         return partie.jeu ? partie.jeu === jeuActif : jeuActif === 'stroop';
     });
@@ -359,10 +364,13 @@ playerInput.addEventListener('input', () => {
         // 5 dernières parties (plus récentes en premier)
         [...parties].reverse().slice(0, 5).forEach(p => {
             const li = document.createElement('li');
+            const scorePartie = jeuActif === 'nback'
+                ? p.score + '/' + p.essaisComptabilises
+                : p.score + '/' + p.tours;
             const details = jeuActif === 'nback'
-                ? ' (' + p.precision + '% réussite, ' + (100 - p.precision) + '% échec)'
+                ? ' (' + p.tauxEchec + '% échec, ' + p.nonCiblesIgnorees + ' non-cibles ignorées)'
                 : ' (' + p.precision + '%, ' + p.reactionMoyenne + ' ms)';
-            li.textContent = p.date + ' — ' + p.score + '/' + p.tours + details;
+            li.textContent = p.date + ' — ' + scorePartie + details;
             historyList.appendChild(li);
         });
 
@@ -394,6 +402,9 @@ btnStart.onclick = () => {
 
     tourActuel = 0;
     score = 0;
+    echecsNBack = 0;
+    essaisComptabilisesNBack = 0;
+    nonCiblesIgnoreesNBack = 0;
     tempsReactions = [];
     essaisAxCpt = jeuActif === 'ax-cpt' ? creerEssaisAxCpt(nbTours) : [];
     sequenceNBack = jeuActif === 'nback'
@@ -441,19 +452,23 @@ btnSmsResults.onclick = () => {
 };
 
 function contenuDesResultats() {
-    const precision = Math.round((score / nbTours) * 100);
     if (jeuActif === 'nback') {
-        const echecs = nbTours - score;
+        const precision = Math.round((score / essaisComptabilisesNBack) * 100);
         return [
             titreResultatsActif(),
             'Joueur : ' + joueur,
-            'Réussites : ' + score + '/' + nbTours,
-            'Taux de réussite : ' + precision + '%',
-            'Échecs : ' + echecs + '/' + nbTours,
-            'Taux d’échec : ' + (100 - precision) + '%'
+            'Réussites : ' + score + '/' + essaisComptabilisesNBack,
+            'Taux de réussite : ' + Math.round(
+                (score / essaisComptabilisesNBack) * 100
+            ) + '%',
+            'Échecs : ' + echecsNBack + '/' + essaisComptabilisesNBack,
+            'Taux d’échec : ' +
+                Math.round((echecsNBack / essaisComptabilisesNBack) * 100) + '%',
+            'Non-cibles ignorées : ' + nonCiblesIgnoreesNBack + ' (non comptabilisées)'
         ].join('\n');
     }
 
+    const precision = Math.round((score / nbTours) * 100);
     const reactionMoyenne = tempsReactions.length
         ? Math.round(tempsReactions.reduce((total, temps) => total + temps, 0) / tempsReactions.length)
         : 0;
@@ -756,10 +771,21 @@ function verifierReponseNBack(aClique) {
         btn.disabled = true;
     });
 
-    const reussite = aClique ? cibleNBackActuelle : !cibleNBackActuelle;
-    if (reussite) score++;
-    feedback.textContent = reussite ? '👍 Réussite !' : '👎 Échec !';
-    feedback.className = reussite ? 'good nback-feedback' : 'bad nback-feedback';
+    if (aClique && cibleNBackActuelle) {
+        score++;
+        essaisComptabilisesNBack++;
+        feedback.textContent = '👍 Réussite !';
+        feedback.className = 'good nback-feedback';
+    } else if (aClique || cibleNBackActuelle) {
+        echecsNBack++;
+        essaisComptabilisesNBack++;
+        feedback.textContent = '👎 Échec !';
+        feedback.className = 'bad nback-feedback';
+    } else {
+        nonCiblesIgnoreesNBack++;
+        feedback.textContent = '➖ Non-cible ignorée (non comptabilisée).';
+        feedback.className = 'nback-feedback';
+    }
 }
 
 function verifierReponse(choix, bonneReponse) {
@@ -795,8 +821,14 @@ function finDuJeu() {
     screenEnd.classList.remove('hidden');
 
     const estNBack = jeuActif === 'nback';
-    const precision = Math.round((score / nbTours) * 100);
-    const echecs = nbTours - score;
+    const echecs = estNBack ? echecsNBack : nbTours - score;
+    const essaisEval = estNBack ? essaisComptabilisesNBack : nbTours;
+    const precision = essaisEval ? Math.round((score / essaisEval) * 100) : 0;
+    const tauxEchec = estNBack
+        ? essaisComptabilisesNBack
+            ? Math.round((echecsNBack / essaisComptabilisesNBack) * 100)
+            : 0
+        : 100 - precision;
     const moyenne = !estNBack && tempsReactions.length
         ? Math.round(tempsReactions.reduce((a, b) => a + b, 0) / tempsReactions.length)
         : null;
@@ -807,14 +839,18 @@ function finDuJeu() {
     resultPlayer.textContent = '👤 ' + joueur;
     resultGame.textContent = '🎮 ' + libelleJeuActif();
     resultScore.textContent = estNBack
-        ? '🎯 Réussites : ' + score + '/' + nbTours
+        ? '🎯 Réussites : ' + score + '/' + essaisEval
         : '🎯 Score : ' + score + '/' + nbTours;
     resultAccuracy.textContent = estNBack
         ? '📊 Taux de réussite : ' + precision + '%'
         : '📊 Précision : ' + precision + '%';
     resultFailure.classList.toggle('hidden', !estNBack);
     resultFailure.textContent = estNBack
-        ? '📉 Échecs : ' + echecs + '/' + nbTours + ' — Taux d’échec : ' + (100 - precision) + '%'
+        ? '📉 Échecs : ' + echecs + '/' + essaisEval + ' — Taux d’échec : ' + tauxEchec + '%'
+        : '';
+    resultNeutral.classList.toggle('hidden', !estNBack);
+    resultNeutral.textContent = estNBack
+        ? '➖ Non-cibles ignorées : ' + nonCiblesIgnoreesNBack + ' (non comptabilisées)'
         : '';
     resultReaction.classList.toggle('hidden', estNBack);
     resultReaction.textContent = estNBack
@@ -854,6 +890,11 @@ function finDuJeu() {
         partie.niveauNBack = niveauNBack;
         partie.typeStimulusNBack = typeStimulusNBack;
         partie.dureeNBack = dureeNBack;
+        partie.echecs = echecsNBack;
+        partie.essaisComptabilises = essaisComptabilisesNBack;
+        partie.tauxEchec = tauxEchec;
+        partie.nonCiblesIgnorees = nonCiblesIgnoreesNBack;
+        partie.versionScoringNBack = 2;
     }
     sauvegarderPartie(partie);
 }
@@ -905,7 +946,7 @@ btnExportCsv.addEventListener('click', () => {
 
     const lignes = estNBack
         ? [
-            ['Joueur', 'Jeu', 'Configuration', 'Date', 'Réussites', 'Nombre de tours', 'Taux de réussite (%)', 'Taux d’échec (%)'],
+            ['Joueur', 'Jeu', 'Configuration', 'Date', 'Réussites', 'Essais évalués / tours', 'Taux de réussite (%)', 'Taux d’échec (%)', 'Non-cibles ignorées'],
             ...parties.map(partie => [
                 nom,
                 JEUX[jeuActif].nom,
@@ -913,9 +954,10 @@ btnExportCsv.addEventListener('click', () => {
                     ' — ' + dureeNBack + ' s/essai',
                 partie.date,
                 partie.score,
-                partie.tours,
+                partie.essaisComptabilises + '/' + partie.tours,
                 partie.precision,
-                100 - partie.precision
+                    partie.tauxEchec,
+                    partie.nonCiblesIgnorees
             ])
         ]
         : [
@@ -958,14 +1000,18 @@ btnExportCsv.addEventListener('click', () => {
 
 function afficherStats(nom, reinitialiserFiltre) {
     const estNBack = jeuActif === 'nback';
-    statAvgAccuracyLabel.textContent = estNBack ? 'taux de réussite moyen' : 'précision moyenne';
-    statAvgReactionLabel.textContent = estNBack ? 'taux d’échec moyen' : 'réaction moyenne';
+    statAvgAccuracyLabel.textContent = estNBack
+        ? 'taux de réussite moyen (essais évalués)'
+        : 'précision moyenne';
+    statAvgReactionLabel.textContent = estNBack
+        ? 'taux d’échec moyen (essais évalués)'
+        : 'réaction moyenne';
     statLatestTrendLabel.textContent = estNBack
         ? 'taux d’échec de la dernière partie'
         : 'tendance de la dernière partie';
-    statsPrecisionHeader.textContent = estNBack ? 'Taux de réussite' : 'Précision';
-    statsReactionHeader.textContent = estNBack ? 'Taux d’échec' : 'Réaction';
-    statsTrendHeader.hidden = estNBack;
+    statsPrecisionHeader.textContent = estNBack ? 'Taux de réussite (évalués)' : 'Précision';
+    statsReactionHeader.textContent = estNBack ? 'Taux d’échec (évalués)' : 'Réaction';
+    statsTrendHeader.textContent = estNBack ? 'Non-cibles ignorées' : 'Tendance';
 
     const toutesLesParties = partiesDe(nom);
 
@@ -1028,8 +1074,11 @@ function afficherStats(nom, reinitialiserFiltre) {
     statAvgAccuracy.textContent = precMoyenne + '%';
 
     if (estNBack) {
-        statAvgReaction.textContent = 100 - precMoyenne + '%';
-        statLatestTrend.textContent = 100 - parties[parties.length - 1].precision + '%';
+        const echecsMoyens = Math.round(
+            parties.reduce((total, partie) => total + partie.tauxEchec, 0) / parties.length
+        );
+        statAvgReaction.textContent = echecsMoyens + '%';
+        statLatestTrend.textContent = parties[parties.length - 1].tauxEchec + '%';
     } else {
         const reacMoyenne = Math.round(
             parties.reduce((a, p) => a + p.reactionMoyenne, 0) / parties.length
@@ -1051,14 +1100,17 @@ function afficherStats(nom, reinitialiserFiltre) {
         const tdDate = document.createElement('td');
         tdDate.textContent = p.date;
         const tdScore = document.createElement('td');
-        tdScore.textContent = p.score + '/' + p.tours;
+        tdScore.textContent = estNBack
+            ? p.score + '/' + p.essaisComptabilises
+            : p.score + '/' + p.tours;
         const tdPrecision = document.createElement('td');
         tdPrecision.textContent = p.precision + '%';
         const tdReaction = document.createElement('td');
-        tdReaction.textContent = estNBack ? (100 - p.precision) + '%' : p.reactionMoyenne + ' ms';
+        tdReaction.textContent = estNBack ? p.tauxEchec + '%' : p.reactionMoyenne + ' ms';
         const tdTrend = document.createElement('td');
-        tdTrend.textContent = libelleTendanceReaction(p.tendanceReaction);
-        tdTrend.hidden = estNBack;
+        tdTrend.textContent = estNBack
+            ? p.nonCiblesIgnorees
+            : libelleTendanceReaction(p.tendanceReaction);
 
         tr.appendChild(tdDate);
         tr.appendChild(tdScore);
