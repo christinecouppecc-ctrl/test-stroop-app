@@ -31,6 +31,12 @@ const JEUX = {
         titreResultats: 'Résultats de la tâche de Flanker',
         instructions: 'Ignorez les flèches qui entourent celle du centre. Répondez à la direction de la flèche centrale.',
         prompt: 'Indiquez la direction de la flèche centrale.'
+    },
+    'ax-cpt': {
+        nom: 'Tâche AX-CPT',
+        titreResultats: 'Résultats de la tâche AX-CPT',
+        instructions: 'Mémorisez la lettre-indice, puis la lettre testée. Choisissez « Cible » uniquement si X suit l’indice A; sinon, choisissez « Pas cible ».',
+        prompt: 'Mémorisez cette lettre-indice.'
     }
 };
 
@@ -114,6 +120,7 @@ let tourActuel = 0;
 let score = 0;
 let tempsDebutQuestion = 0;
 let tempsReactions = [];
+let essaisAxCpt = [];
 let questionVerrouillee = false;
 let timeoutQuestion = null;
 
@@ -301,6 +308,7 @@ btnStart.onclick = () => {
     tourActuel = 0;
     score = 0;
     tempsReactions = [];
+    essaisAxCpt = jeuActif === 'ax-cpt' ? creerEssaisAxCpt(nbTours) : [];
     questionVerrouillee = false;
 
     screenStart.classList.add('hidden');
@@ -392,11 +400,13 @@ function prochaineQuestion() {
         prochaineQuestionFormes();
     } else if (jeuActif === 'flanker') {
         prochaineQuestionFlanker();
+    } else if (jeuActif === 'ax-cpt') {
+        prochaineQuestionAxCpt();
     } else {
         prochaineQuestionStroop();
     }
 
-    tempsDebutQuestion = performance.now();
+    if (jeuActif !== 'ax-cpt') tempsDebutQuestion = performance.now();
 }
 
 function prochaineQuestionStroop() {
@@ -472,6 +482,68 @@ function prochaineQuestionFlanker() {
         btn.onclick = () => verifierReponse(reponse.direction, directionCible);
         answersDiv.appendChild(btn);
     });
+}
+
+function creerEssaisAxCpt(nombre) {
+    const autresEssaisParType = Math.max(1, Math.round(nombre * 0.1));
+    const essais = [
+        ...Array.from({ length: nombre - autresEssaisParType * 3 }, () => ({
+            indice: 'A',
+            test: 'X',
+            cible: true
+        })),
+        ...Array.from({ length: autresEssaisParType }, () => ({
+            indice: 'A',
+            test: 'Y',
+            cible: false
+        })),
+        ...Array.from({ length: autresEssaisParType }, () => ({
+            indice: 'B',
+            test: 'X',
+            cible: false
+        })),
+        ...Array.from({ length: autresEssaisParType }, () => ({
+            indice: 'B',
+            test: 'Y',
+            cible: false
+        }))
+    ];
+
+    for (let index = essais.length - 1; index > 0; index--) {
+        const autreIndex = Math.floor(Math.random() * (index + 1));
+        [essais[index], essais[autreIndex]] = [essais[autreIndex], essais[index]];
+    }
+
+    return essais;
+}
+
+function prochaineQuestionAxCpt() {
+    const essai = essaisAxCpt[tourActuel - 1];
+    wordDiv.style.color = '#333';
+    wordDiv.textContent = essai.indice;
+    wordDiv.setAttribute('aria-label', 'Lettre-indice ' + essai.indice);
+    gamePrompt.textContent = 'Mémorisez cette lettre-indice.';
+    answersDiv.innerHTML = '';
+
+    timeoutQuestion = setTimeout(() => {
+        wordDiv.textContent = essai.test;
+        wordDiv.setAttribute('aria-label', 'Lettre testée ' + essai.test);
+        gamePrompt.textContent = 'Cible uniquement si X suit l’indice A.';
+        answersDiv.innerHTML = '';
+
+        [
+            { valeur: true, texte: 'Cible' },
+            { valeur: false, texte: 'Pas cible' }
+        ].forEach(reponse => {
+            const btn = document.createElement('button');
+            btn.className = 'answer-btn ax-cpt-answer';
+            btn.textContent = reponse.texte;
+            btn.onclick = () => verifierReponse(reponse.valeur, essai.cible);
+            answersDiv.appendChild(btn);
+        });
+
+        tempsDebutQuestion = performance.now();
+    }, 800);
 }
 
 function verifierReponse(choix, bonneReponse) {

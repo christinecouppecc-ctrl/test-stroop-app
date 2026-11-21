@@ -327,6 +327,12 @@ h3 {
     font-size: 20px;
 }
 
+.ax-cpt-answer {
+    min-width: 140px;
+    background: #667eea;
+    font-size: 18px;
+}
+
 /* Feedback */
 #feedback {
     margin-top: 20px;
