@@ -250,7 +250,7 @@ function afficherConfigurationJeu() {
     gamePrompt.textContent = jeuActif === 'nback'
         ? configuration.prompt.replace('N essais', 'N-' + niveauNBack + ' essais')
         : configuration.prompt;
-    nbackOptions.classList.toggle('hidden', jeuActif !== 'nback');
+    nbackOptions.hidden = jeuActif !== 'nback';
     roundsInput.value = toursParJeu[jeuActif];
     btnBackGames.textContent = jeuActif === 'formes'
         ? '← Choisir la version'

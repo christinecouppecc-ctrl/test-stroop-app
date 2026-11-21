@@ -198,8 +198,8 @@ h3 {
     gap: 10px;
 }
 
-.nback-options.hidden {
-    display: none;
+.nback-options[hidden] {
+    display: none !important;
 }
 
 .nback-options label {
