@@ -284,8 +284,13 @@ h3 {
 }
 
 /* Tableau des parties */
+.stats-table-wrap {
+    overflow-x: auto;
+}
+
 #stats-table {
     width: 100%;
+    min-width: 520px;
     border-collapse: collapse;
     margin: 15px 0 25px;
     font-size: 14px;

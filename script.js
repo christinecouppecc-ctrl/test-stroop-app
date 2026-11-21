@@ -33,6 +33,7 @@ const resultPlayer = document.getElementById('result-player');
 const resultScore = document.getElementById('result-score');
 const resultAccuracy = document.getElementById('result-accuracy');
 const resultReaction = document.getElementById('result-reaction');
+const resultTrend = document.getElementById('result-trend');
 const resultRecord = document.getElementById('result-record');
 
 const historyBox = document.getElementById('history-box');
@@ -50,6 +51,7 @@ const statTotal = document.getElementById('stat-total');
 const statBest = document.getElementById('stat-best');
 const statAvgAccuracy = document.getElementById('stat-avg-accuracy');
 const statAvgReaction = document.getElementById('stat-avg-reaction');
+const statLatestTrend = document.getElementById('stat-latest-trend');
 
 // ============ VARIABLES DU JEU ============
 let joueur = '';
@@ -60,6 +62,35 @@ let tempsDebutQuestion = 0;
 let tempsReactions = [];
 let questionVerrouillee = false;
 let timeoutQuestion = null;
+
+function calculerTendanceReaction(reactions) {
+    if (!Array.isArray(reactions) || reactions.length < 2) return 'indisponible';
+
+    const moyenneIndex = (reactions.length - 1) / 2;
+    const moyenneReaction = reactions.reduce((total, temps) => total + temps, 0) / reactions.length;
+    let covariance = 0;
+    let varianceIndex = 0;
+
+    reactions.forEach((temps, index) => {
+        const ecartIndex = index - moyenneIndex;
+        covariance += ecartIndex * (temps - moyenneReaction);
+        varianceIndex += ecartIndex * ecartIndex;
+    });
+
+    const pente = covariance / varianceIndex;
+    if (pente < 0) return 'acceleration';
+    if (pente > 0) return 'ralentissement';
+    return 'stable';
+}
+
+function libelleTendanceReaction(tendance) {
+    const libelles = {
+        acceleration: 'Accélération',
+        ralentissement: 'Ralentissement',
+        stable: 'Stable'
+    };
+    return libelles[tendance] || '—';
+}
 
 // ============ SAUVEGARDE (localStorage) ============
 function chargerToutesLesParties() {
@@ -269,11 +300,14 @@ function finDuJeu() {
     const moyenne = tempsReactions.length
         ? Math.round(tempsReactions.reduce((a, b) => a + b, 0) / tempsReactions.length)
         : 0;
+    const tendanceReaction = calculerTendanceReaction(tempsReactions);
 
     resultPlayer.textContent = '👤 ' + joueur;
     resultScore.textContent = '🎯 Score : ' + score + '/' + nbTours;
     resultAccuracy.textContent = '📊 Précision : ' + precision + '%';
     resultReaction.textContent = '⚡ Temps de réaction moyen : ' + moyenne + ' ms';
+    resultTrend.textContent = '📈 Tendance des réactions : ' +
+        libelleTendanceReaction(tendanceReaction).toLowerCase();
 
     // Est-ce un nouveau record pour ce joueur ?
     const anciennes = partiesDe(joueur);
@@ -295,7 +329,8 @@ function finDuJeu() {
         score: score,
         tours: nbTours,
         precision: precision,
-        reactionMoyenne: moyenne
+        reactionMoyenne: moyenne,
+        tendanceReaction: tendanceReaction
     });
 }
 
@@ -342,14 +377,15 @@ btnExportCsv.addEventListener('click', () => {
     if (parties.length === 0) return;
 
     const lignes = [
-        ['Joueur', 'Date', 'Score', 'Nombre de tours', 'Précision (%)', 'Réaction moyenne (ms)'],
+        ['Joueur', 'Date', 'Score', 'Nombre de tours', 'Précision (%)', 'Réaction moyenne (ms)', 'Tendance réaction'],
         ...parties.map(partie => [
             nom,
             partie.date,
             partie.score,
             partie.tours,
             partie.precision,
-            partie.reactionMoyenne
+            partie.reactionMoyenne,
+            libelleTendanceReaction(partie.tendanceReaction)
         ])
     ];
     const csv = lignes.map(ligne => ligne.map(valeur => {
@@ -410,6 +446,7 @@ function afficherStats(nom, reinitialiserFiltre) {
         statBest.textContent = '—';
         statAvgAccuracy.textContent = '—';
         statAvgReaction.textContent = '—';
+        statLatestTrend.textContent = '—';
         statsTableBody.innerHTML = '';
         statsEmpty.textContent = 'Aucune partie trouvée avec ' + nombreDeToursFiltre + ' tours.';
         statsEmpty.classList.remove('hidden');
@@ -435,6 +472,9 @@ function afficherStats(nom, reinitialiserFiltre) {
         parties.reduce((a, p) => a + p.reactionMoyenne, 0) / parties.length
     );
     statAvgReaction.textContent = reacMoyenne + ' ms';
+    statLatestTrend.textContent = libelleTendanceReaction(
+        parties[parties.length - 1].tendanceReaction
+    );
 
     // ---- Tableau détaillé (plus récentes en premier) ----
     statsTableBody.innerHTML = '';
@@ -452,11 +492,14 @@ function afficherStats(nom, reinitialiserFiltre) {
         tdPrecision.textContent = p.precision + '%';
         const tdReaction = document.createElement('td');
         tdReaction.textContent = p.reactionMoyenne + ' ms';
+        const tdTrend = document.createElement('td');
+        tdTrend.textContent = libelleTendanceReaction(p.tendanceReaction);
 
         tr.appendChild(tdDate);
         tr.appendChild(tdScore);
         tr.appendChild(tdPrecision);
         tr.appendChild(tdReaction);
+        tr.appendChild(tdTrend);
         statsTableBody.appendChild(tr);
     });
 }

@@ -61,6 +61,7 @@
             <p id="result-score" class="result-line"></p>
             <p id="result-accuracy" class="result-line"></p>
             <p id="result-reaction" class="result-line"></p>
+            <p id="result-trend" class="result-line"></p>
             <p id="result-record" class="result-line record"></p>
             <!-- PUBLIC_DEPLOYMENT_REMOVE_EMAIL_BUTTON_START -->
             <button id="btn-email-results" class="btn-secondary">📧 Envoyer les résultats par e-mail</button>
@@ -109,21 +110,28 @@
                         <span class="stat-value" id="stat-avg-reaction">0 ms</span>
                         <span class="stat-label">réaction moyenne</span>
                     </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-latest-trend">—</span>
+                        <span class="stat-label">tendance de la dernière partie</span>
+                    </div>
                 </div>
 
                 <h3>Détail des parties</h3>
                 <button id="btn-export-csv" class="btn-secondary">⬇ Exporter pour Excel (.csv)</button>
-                <table id="stats-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Score</th>
-                            <th>Précision</th>
-                            <th>Réaction</th>
-                        </tr>
-                    </thead>
-                    <tbody id="stats-table-body"></tbody>
-                </table>
+                <div class="stats-table-wrap">
+                    <table id="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Score</th>
+                                <th>Précision</th>
+                                <th>Réaction</th>
+                                <th>Tendance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stats-table-body"></tbody>
+                    </table>
+                </div>
             </div>
 
             <p id="stats-empty" class="hidden">Aucune partie trouvée pour ce joueur 🤷</p>
