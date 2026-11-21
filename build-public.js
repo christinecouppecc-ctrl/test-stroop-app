@@ -7,8 +7,8 @@ const sourceFiles = ['index.html', 'script.js', 'style.css'];
 const privateSections = {
     'index.html': [
         [
-            '<!-- PUBLIC_DEPLOYMENT_REMOVE_CONTACT_BUTTONS_START -->',
-            '<!-- PUBLIC_DEPLOYMENT_REMOVE_CONTACT_BUTTONS_END -->'
+            '<!-- PUBLIC_DEPLOYMENT_REMOVE_EMAIL_BUTTON_START -->',
+            '<!-- PUBLIC_DEPLOYMENT_REMOVE_EMAIL_BUTTON_END -->'
         ],
         [
             '<!-- PUBLIC_DEPLOYMENT_REMOVE_CONTACT_CONFIG_START -->',
@@ -17,12 +17,12 @@ const privateSections = {
     ],
     'script.js': [
         [
-            '// PUBLIC_DEPLOYMENT_REMOVE_CONTACT_REFERENCES_START',
-            '// PUBLIC_DEPLOYMENT_REMOVE_CONTACT_REFERENCES_END'
+            '// PUBLIC_DEPLOYMENT_REMOVE_EMAIL_REFERENCE_START',
+            '// PUBLIC_DEPLOYMENT_REMOVE_EMAIL_REFERENCE_END'
         ],
         [
-            '// PUBLIC_DEPLOYMENT_REMOVE_CONTACT_HANDLERS_START',
-            '// PUBLIC_DEPLOYMENT_REMOVE_CONTACT_HANDLERS_END'
+            '// PUBLIC_DEPLOYMENT_REMOVE_EMAIL_HANDLER_START',
+            '// PUBLIC_DEPLOYMENT_REMOVE_EMAIL_HANDLER_END'
         ]
     ]
 };

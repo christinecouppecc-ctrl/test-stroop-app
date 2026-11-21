@@ -62,10 +62,15 @@
             <p id="result-accuracy" class="result-line"></p>
             <p id="result-reaction" class="result-line"></p>
             <p id="result-record" class="result-line record"></p>
-            <!-- PUBLIC_DEPLOYMENT_REMOVE_CONTACT_BUTTONS_START -->
+            <!-- PUBLIC_DEPLOYMENT_REMOVE_EMAIL_BUTTON_START -->
             <button id="btn-email-results" class="btn-secondary">📧 Envoyer les résultats par e-mail</button>
-            <button id="btn-sms-results" class="btn-secondary">📱 Envoyer les résultats par SMS</button>
-            <!-- PUBLIC_DEPLOYMENT_REMOVE_CONTACT_BUTTONS_END -->
+            <!-- PUBLIC_DEPLOYMENT_REMOVE_EMAIL_BUTTON_END -->
+            <div class="config sms-share">
+                <label for="sms-phone-input">Numéro de téléphone :</label>
+                <input type="tel" id="sms-phone-input" autocomplete="tel" maxlength="20" placeholder="Ex. +33 6 12 34 56 78">
+                <button id="btn-sms-results" class="btn-secondary">📱 Envoyer les résultats par SMS</button>
+                <small>Votre application SMS s’ouvrira avec le message prérempli.</small>
+            </div>
             <button id="btn-restart" class="btn-primary">Rejouer 🔁</button>
             <button id="btn-end-stats" class="btn-secondary">📊 Statistiques</button>
             <button id="btn-home" class="btn-secondary">🏠 Retour à l'accueil</button>

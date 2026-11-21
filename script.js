@@ -18,10 +18,11 @@ const btnStart = document.getElementById('btn-start');
 const btnRestart = document.getElementById('btn-restart');
 const btnEndStats = document.getElementById('btn-end-stats');
 const btnHome = document.getElementById('btn-home');
-// PUBLIC_DEPLOYMENT_REMOVE_CONTACT_REFERENCES_START
+// PUBLIC_DEPLOYMENT_REMOVE_EMAIL_REFERENCE_START
 const btnEmailResults = document.getElementById('btn-email-results');
+// PUBLIC_DEPLOYMENT_REMOVE_EMAIL_REFERENCE_END
+const smsPhoneInput = document.getElementById('sms-phone-input');
 const btnSmsResults = document.getElementById('btn-sms-results');
-// PUBLIC_DEPLOYMENT_REMOVE_CONTACT_REFERENCES_END
 
 const playerName = document.getElementById('player-name');
 const progress = document.getElementById('progress');
@@ -157,7 +158,7 @@ btnHome.onclick = () => {
     playerInput.dispatchEvent(new Event('input'));
 };
 
-// PUBLIC_DEPLOYMENT_REMOVE_CONTACT_HANDLERS_START
+// PUBLIC_DEPLOYMENT_REMOVE_EMAIL_HANDLER_START
 btnEmailResults.onclick = () => {
     const contenu = contenuDesResultats();
     const sujet = 'Résultats du Test de Stroop - ' + joueur;
@@ -165,10 +166,17 @@ btnEmailResults.onclick = () => {
     window.location.href = 'mailto:' + encodeURIComponent(window.STROOP_CONTACTS.email) + '?subject=' +
         encodeURIComponent(sujet) + '&body=' + encodeURIComponent(contenu);
 };
+// PUBLIC_DEPLOYMENT_REMOVE_EMAIL_HANDLER_END
 
 btnSmsResults.onclick = () => {
-    window.location.href = 'sms:' + encodeURIComponent(window.STROOP_CONTACTS.phone) +
-        '?body=' + encodeURIComponent(contenuDesResultats());
+    const numero = smsPhoneInput.value.trim().replace(/[\s().-]/g, '');
+    if (!/^\+?\d{6,15}$/.test(numero)) {
+        alert('Veuillez saisir un numéro valide (6 à 15 chiffres).');
+        smsPhoneInput.focus();
+        return;
+    }
+
+    window.location.href = 'sms:' + numero + '?body=' + encodeURIComponent(contenuDesResultats());
 };
 
 function contenuDesResultats() {
@@ -184,7 +192,6 @@ function contenuDesResultats() {
         'Temps de réaction moyen : ' + reactionMoyenne + ' ms'
     ].join('\n');
 }
-// PUBLIC_DEPLOYMENT_REMOVE_CONTACT_HANDLERS_END
 
 btnEndStats.onclick = () => {
     clearTimeout(timeoutQuestion);
