@@ -39,6 +39,11 @@
                     <strong>Tâche AX-CPT</strong>
                     <span>Repérez X lorsqu’il suit la lettre A.</span>
                 </button>
+                <button class="game-card" type="button" data-game="nback">
+                    <span class="game-icon" aria-hidden="true">N↔</span>
+                    <strong>Tâche N-Back</strong>
+                    <span>Retrouvez le stimulus vu N essais plus tôt.</span>
+                </button>
             </div>
         </div>
 
@@ -64,6 +69,22 @@
         <div id="screen-start" class="hidden">
             <h2 id="game-config-title"></h2>
             <p class="rule" id="game-instructions"></p>
+
+            <div id="nback-options" class="config nback-options hidden">
+                <label for="nback-level">Niveau :</label>
+                <select id="nback-level">
+                    <option value="1">N-1</option>
+                    <option value="2">N-2</option>
+                    <option value="3">N-3</option>
+                    <option value="4">N-4</option>
+                </select>
+                <label for="nback-type">Stimuli :</label>
+                <select id="nback-type">
+                    <option value="lettres">Lettres</option>
+                    <option value="formes">Formes</option>
+                    <option value="chiffres">Chiffres</option>
+                </select>
+            </div>
 
             <div class="config">
                 <label for="player-input">Nom du joueur :</label>

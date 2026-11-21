@@ -37,7 +37,25 @@ const JEUX = {
         titreResultats: 'Résultats de la tâche AX-CPT',
         instructions: 'Mémorisez la lettre-indice, puis la lettre testée. Choisissez « Cible » uniquement si X suit l’indice A; sinon, choisissez « Pas cible ».',
         prompt: 'Mémorisez cette lettre-indice.'
+    },
+    nback: {
+        nom: 'Tâche N-Back',
+        titreResultats: 'Résultats de la tâche N-Back',
+        instructions: 'Mémorisez les stimuli. Pour chaque nouvel élément, indiquez s’il est identique à celui présenté N essais auparavant.',
+        prompt: 'Est-ce le même stimulus que celui présenté N essais auparavant ?'
     }
+};
+
+const LIBELLES_STIMULI_NBACK = {
+    lettres: 'Lettres',
+    formes: 'Formes',
+    chiffres: 'Chiffres'
+};
+
+const STIMULI_NBACK = {
+    lettres: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+    formes: FORMES.map(forme => forme.id),
+    chiffres: ['1', '2', '3', '4', '5', '6', '7', '8', '9']
 };
 
 const MODES_FORMES = {
@@ -66,6 +84,9 @@ const gameInstructions = document.getElementById('game-instructions');
 const gamePrompt = document.getElementById('game-prompt');
 const gameCards = document.querySelectorAll('.game-card[data-game]');
 const formModeCards = document.querySelectorAll('[data-form-mode]');
+const nbackOptions = document.getElementById('nback-options');
+const nbackLevelInput = document.getElementById('nback-level');
+const nbackTypeInput = document.getElementById('nback-type');
 const playerInput = document.getElementById('player-input');
 const roundsInput = document.getElementById('rounds-input');
 const btnStart = document.getElementById('btn-start');
@@ -115,12 +136,16 @@ const statsTitle = document.getElementById('stats-title');
 let joueur = '';
 let jeuActif = 'stroop';
 let modeFormes = 1;
+let niveauNBack = 1;
+let typeStimulusNBack = 'lettres';
 let nbTours = 10;
 let tourActuel = 0;
 let score = 0;
 let tempsDebutQuestion = 0;
 let tempsReactions = [];
 let essaisAxCpt = [];
+let sequenceNBack = [];
+let indexSequenceNBack = 0;
 let questionVerrouillee = false;
 let timeoutQuestion = null;
 
@@ -163,15 +188,25 @@ function descriptionTendanceReaction(tendance) {
 }
 
 function libelleJeuActif() {
-    return jeuActif === 'formes'
-        ? JEUX.formes.nom + ' — ' + MODES_FORMES[modeFormes].nom
-        : JEUX[jeuActif].nom;
+    if (jeuActif === 'formes') {
+        return JEUX.formes.nom + ' — ' + MODES_FORMES[modeFormes].nom;
+    }
+    if (jeuActif === 'nback') {
+        return JEUX.nback.nom + ' — N-' + niveauNBack + ' — ' +
+            LIBELLES_STIMULI_NBACK[typeStimulusNBack];
+    }
+    return JEUX[jeuActif].nom;
 }
 
 function titreResultatsActif() {
-    return jeuActif === 'formes'
-        ? JEUX.formes.titreResultats + ' — ' + MODES_FORMES[modeFormes].nom
-        : JEUX[jeuActif].titreResultats;
+    if (jeuActif === 'formes') {
+        return JEUX.formes.titreResultats + ' — ' + MODES_FORMES[modeFormes].nom;
+    }
+    if (jeuActif === 'nback') {
+        return JEUX.nback.titreResultats + ' — N-' + niveauNBack + ' — ' +
+            LIBELLES_STIMULI_NBACK[typeStimulusNBack];
+    }
+    return JEUX[jeuActif].titreResultats;
 }
 
 function afficherConfigurationJeu() {
@@ -179,8 +214,13 @@ function afficherConfigurationJeu() {
         ? MODES_FORMES[modeFormes]
         : JEUX[jeuActif];
     gameConfigTitle.textContent = libelleJeuActif();
-    gameInstructions.textContent = configuration.instructions;
-    gamePrompt.textContent = configuration.prompt;
+    gameInstructions.textContent = jeuActif === 'nback'
+        ? configuration.instructions.replace('N essais', 'N-' + niveauNBack + ' essais')
+        : configuration.instructions;
+    gamePrompt.textContent = jeuActif === 'nback'
+        ? configuration.prompt.replace('N essais', 'N-' + niveauNBack + ' essais')
+        : configuration.prompt;
+    nbackOptions.classList.toggle('hidden', jeuActif !== 'nback');
     btnBackGames.textContent = jeuActif === 'formes'
         ? '← Choisir la version'
         : '← Choisir un jeu';
@@ -208,6 +248,16 @@ formModeCards.forEach(card => {
         screenFormMode.classList.add('hidden');
         afficherConfigurationJeu();
     };
+});
+
+nbackLevelInput.addEventListener('change', () => {
+    niveauNBack = Number(nbackLevelInput.value);
+    if (jeuActif === 'nback') afficherConfigurationJeu();
+});
+
+nbackTypeInput.addEventListener('change', () => {
+    typeStimulusNBack = nbackTypeInput.value;
+    if (jeuActif === 'nback') afficherConfigurationJeu();
 });
 
 btnModeBack.onclick = () => {
@@ -249,6 +299,11 @@ function partiesDe(nom) {
         if (jeuActif === 'formes') {
             return partie.jeu === 'formes' &&
                 Number(partie.modeFormes || 1) === modeFormes;
+        }
+        if (jeuActif === 'nback') {
+            return partie.jeu === 'nback' &&
+                Number(partie.niveauNBack) === niveauNBack &&
+                partie.typeStimulusNBack === typeStimulusNBack;
         }
         return partie.jeu ? partie.jeu === jeuActif : jeuActif === 'stroop';
     });
@@ -309,6 +364,10 @@ btnStart.onclick = () => {
     score = 0;
     tempsReactions = [];
     essaisAxCpt = jeuActif === 'ax-cpt' ? creerEssaisAxCpt(nbTours) : [];
+    sequenceNBack = jeuActif === 'nback'
+        ? creerSequenceNBack(nbTours, niveauNBack, typeStimulusNBack)
+        : [];
+    indexSequenceNBack = 0;
     questionVerrouillee = false;
 
     screenStart.classList.add('hidden');
@@ -385,6 +444,11 @@ function couleurAleatoire(sauf) {
 }
 
 function prochaineQuestion() {
+    if (jeuActif === 'nback') {
+        prochaineQuestionNBack();
+        return;
+    }
+
     if (tourActuel >= nbTours) {
         finDuJeu();
         return;
@@ -395,6 +459,7 @@ function prochaineQuestion() {
     progress.textContent = tourActuel + '/' + nbTours;
     feedback.textContent = '';
     wordDiv.classList.toggle('flanker-stimulus', jeuActif === 'flanker');
+    wordDiv.classList.remove('nback-shape-stimulus');
 
     if (jeuActif === 'formes') {
         prochaineQuestionFormes();
@@ -546,6 +611,105 @@ function prochaineQuestionAxCpt() {
     }, 800);
 }
 
+function melanger(tableau) {
+    for (let index = tableau.length - 1; index > 0; index--) {
+        const autreIndex = Math.floor(Math.random() * (index + 1));
+        [tableau[index], tableau[autreIndex]] = [tableau[autreIndex], tableau[index]];
+    }
+    return tableau;
+}
+
+function creerSequenceNBack(nombreTours, niveau, typeStimulus) {
+    const banque = STIMULI_NBACK[typeStimulus];
+    const nombreCibles = Math.min(
+        nombreTours - 1,
+        Math.max(1, Math.round(nombreTours * 0.3))
+    );
+    const cibles = melanger([
+        ...Array(nombreCibles).fill(true),
+        ...Array(nombreTours - nombreCibles).fill(false)
+    ]);
+    const sequence = Array.from({ length: niveau }, () =>
+        banque[Math.floor(Math.random() * banque.length)]
+    );
+
+    cibles.forEach(cible => {
+        const stimulusNBack = sequence[sequence.length - niveau];
+        if (cible) {
+            sequence.push(stimulusNBack);
+        } else {
+            const autresStimuli = banque.filter(stimulus => stimulus !== stimulusNBack);
+            sequence.push(autresStimuli[Math.floor(Math.random() * autresStimuli.length)]);
+        }
+    });
+
+    return sequence;
+}
+
+function afficherStimulusNBack(stimulus) {
+    wordDiv.classList.remove('flanker-stimulus');
+    wordDiv.classList.toggle('nback-shape-stimulus', typeStimulusNBack === 'formes');
+    wordDiv.style.color = '#333';
+    wordDiv.innerHTML = '';
+
+    if (typeStimulusNBack === 'formes') {
+        const forme = FORMES.find(option => option.id === stimulus);
+        wordDiv.setAttribute('aria-label', 'Stimulus ' + forme.nom.toLocaleLowerCase('fr-FR'));
+        const icone = document.createElement('span');
+        icone.className = 'shape-icon ' + forme.classe;
+        icone.setAttribute('aria-hidden', 'true');
+        wordDiv.appendChild(icone);
+    } else {
+        wordDiv.setAttribute('aria-label', 'Stimulus ' + stimulus);
+        wordDiv.textContent = stimulus;
+    }
+}
+
+function prochaineQuestionNBack() {
+    if (tourActuel >= nbTours) {
+        finDuJeu();
+        return;
+    }
+
+    questionVerrouillee = false;
+    feedback.textContent = '';
+    feedback.className = '';
+    answersDiv.innerHTML = '';
+
+    const indexStimulus = indexSequenceNBack;
+    const stimulus = sequenceNBack[indexStimulus];
+    indexSequenceNBack++;
+    afficherStimulusNBack(stimulus);
+
+    if (indexStimulus < niveauNBack) {
+        progress.textContent = 'Mémoire ' + (indexStimulus + 1) + '/' + niveauNBack;
+        gamePrompt.textContent = 'Mémorisez les premiers stimuli.';
+        timeoutQuestion = setTimeout(prochaineQuestion, 900);
+        return;
+    }
+
+    tourActuel++;
+    progress.textContent = tourActuel + '/' + nbTours;
+    gamePrompt.textContent = 'Est-ce le même stimulus qu’il y a ' +
+        niveauNBack + ' essai' + (niveauNBack > 1 ? 's' : '') + ' ?';
+
+    [
+        { valeur: true, texte: 'Identique' },
+        { valeur: false, texte: 'Différent' }
+    ].forEach(reponse => {
+        const btn = document.createElement('button');
+        btn.className = 'answer-btn nback-answer';
+        btn.textContent = reponse.texte;
+        btn.onclick = () => verifierReponse(
+            reponse.valeur,
+            stimulus === sequenceNBack[indexStimulus - niveauNBack]
+        );
+        answersDiv.appendChild(btn);
+    });
+
+    tempsDebutQuestion = performance.now();
+}
+
 function verifierReponse(choix, bonneReponse) {
     if (questionVerrouillee) return;
     questionVerrouillee = true;
@@ -562,12 +726,15 @@ function verifierReponse(choix, bonneReponse) {
 
     if (bonneReponseChoisie) {
         score++;
-        feedback.textContent = '✅ Correct ! (' + tempsReaction + ' ms)';
+        const icone = jeuActif === 'nback' ? '👍' : '✅';
+        feedback.textContent = icone + ' Correct ! (' + tempsReaction + ' ms)';
         feedback.className = 'good';
     } else {
-        feedback.textContent = '❌ Faux ! (' + tempsReaction + ' ms)';
+        const icone = jeuActif === 'nback' ? '👎' : '❌';
+        feedback.textContent = icone + ' Faux ! (' + tempsReaction + ' ms)';
         feedback.className = 'bad';
     }
+    feedback.classList.toggle('nback-feedback', jeuActif === 'nback');
 
     // Pause de 600ms avant la question suivante
     timeoutQuestion = setTimeout(prochaineQuestion, 600);
@@ -617,6 +784,10 @@ function finDuJeu() {
         jeu: jeuActif
     };
     if (jeuActif === 'formes') partie.modeFormes = modeFormes;
+    if (jeuActif === 'nback') {
+        partie.niveauNBack = niveauNBack;
+        partie.typeStimulusNBack = typeStimulusNBack;
+    }
     sauvegarderPartie(partie);
 }
 
@@ -669,7 +840,11 @@ btnExportCsv.addEventListener('click', () => {
         ...parties.map(partie => [
             nom,
             JEUX[jeuActif].nom,
-            jeuActif === 'formes' ? MODES_FORMES[modeFormes].nom : '',
+            jeuActif === 'formes'
+                ? MODES_FORMES[modeFormes].nom
+                : jeuActif === 'nback'
+                    ? 'N-' + niveauNBack + ' — ' + LIBELLES_STIMULI_NBACK[typeStimulusNBack]
+                    : '',
             partie.date,
             partie.score,
             partie.tours,
@@ -689,8 +864,11 @@ btnExportCsv.addEventListener('click', () => {
     const lien = document.createElement('a');
     const nomFichier = nom.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_') || 'joueur';
     const suffixeMode = jeuActif === 'formes' ? '-mode-' + modeFormes : '';
+    const suffixeNBack = jeuActif === 'nback'
+        ? '-n' + niveauNBack + '-' + typeStimulusNBack
+        : '';
     lien.href = url;
-    lien.download = 'parties-' + jeuActif + suffixeMode + '-' + nomFichier + '-' +
+    lien.download = 'parties-' + jeuActif + suffixeMode + suffixeNBack + '-' + nomFichier + '-' +
         new Date().toISOString().slice(0, 10) + '.csv';
     document.body.appendChild(lien);
     lien.click();
