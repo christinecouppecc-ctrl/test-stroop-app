@@ -48,5 +48,12 @@ sourceFiles.forEach(fileName => {
     (privateSections[fileName] || []).forEach(([start, end]) => {
         content = removeSection(content, start, end, fileName);
     });
+
+    if (fileName === 'index.html') {
+        const version = process.env.GITHUB_SHA || 'local';
+        content = content.replace('href="style.css"', 'href="style.css?v=' + version + '"');
+        content = content.replace('src="script.js"', 'src="script.js?v=' + version + '"');
+    }
+
     fs.writeFileSync(path.join(output, fileName), content, 'utf8');
 });
