@@ -25,6 +25,12 @@ const JEUX = {
         titreResultats: 'Résultats du jeu des formes',
         instructions: 'Une forme est écrite en haut de l’écran. Cliquez le plus vite possible sur la forme correspondante.',
         prompt: 'Cliquez sur la forme écrite ci-dessous.'
+    },
+    flanker: {
+        nom: 'Tâche de Flanker',
+        titreResultats: 'Résultats de la tâche de Flanker',
+        instructions: 'Ignorez les flèches qui entourent celle du centre. Répondez à la direction de la flèche centrale.',
+        prompt: 'Indiquez la direction de la flèche centrale.'
     }
 };
 
@@ -232,12 +238,13 @@ function partiesDe(nom) {
     if (!nom) return [];
     const tout = chargerToutesLesParties();
     if (!Array.isArray(tout[nom])) return [];
-    return tout[nom].filter(partie =>
-        jeuActif === 'stroop'
-            ? !partie.jeu || partie.jeu === 'stroop'
-            : partie.jeu === jeuActif &&
-                Number(partie.modeFormes || 1) === modeFormes
-    );
+    return tout[nom].filter(partie => {
+        if (jeuActif === 'formes') {
+            return partie.jeu === 'formes' &&
+                Number(partie.modeFormes || 1) === modeFormes;
+        }
+        return partie.jeu ? partie.jeu === jeuActif : jeuActif === 'stroop';
+    });
 }
 
 function sauvegarderPartie(partie) {
@@ -379,9 +386,12 @@ function prochaineQuestion() {
     tourActuel++;
     progress.textContent = tourActuel + '/' + nbTours;
     feedback.textContent = '';
+    wordDiv.classList.toggle('flanker-stimulus', jeuActif === 'flanker');
 
     if (jeuActif === 'formes') {
         prochaineQuestionFormes();
+    } else if (jeuActif === 'flanker') {
+        prochaineQuestionFlanker();
     } else {
         prochaineQuestionStroop();
     }
@@ -427,6 +437,39 @@ function prochaineQuestionFormes() {
         icone.setAttribute('aria-hidden', 'true');
         btn.appendChild(icone);
         btn.onclick = () => verifierReponse(forme.id, formeCible.id);
+        answersDiv.appendChild(btn);
+    });
+}
+
+function prochaineQuestionFlanker() {
+    const directionCible = Math.random() < 0.5 ? 'gauche' : 'droite';
+    const incongru = Math.random() < 0.5;
+    const directionFlanc = incongru
+        ? (directionCible === 'gauche' ? 'droite' : 'gauche')
+        : directionCible;
+    const fleche = direction => direction === 'gauche' ? '←' : '→';
+
+    wordDiv.style.color = '#555';
+    wordDiv.innerHTML = '';
+    for (let index = 0; index < 5; index++) {
+        const direction = index === 2 ? directionCible : directionFlanc;
+        const span = document.createElement('span');
+        span.className = index === 2 ? 'flanker-arrow flanker-target' : 'flanker-arrow';
+        span.textContent = fleche(direction);
+        span.setAttribute('aria-hidden', 'true');
+        wordDiv.appendChild(span);
+    }
+
+    answersDiv.innerHTML = '';
+    [
+        { direction: 'gauche', texte: '← Gauche' },
+        { direction: 'droite', texte: 'Droite →' }
+    ].forEach(reponse => {
+        const btn = document.createElement('button');
+        btn.className = 'answer-btn flanker-answer';
+        btn.textContent = reponse.texte;
+        btn.setAttribute('aria-label', reponse.direction);
+        btn.onclick = () => verifierReponse(reponse.direction, directionCible);
         answersDiv.appendChild(btn);
     });
 }

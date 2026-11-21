@@ -308,6 +308,25 @@ h3 {
     clip-path: polygon(50% 0, 0 100%, 100% 100%);
 }
 
+.flanker-stimulus {
+    display: flex;
+    justify-content: center;
+    gap: 0.04em;
+    letter-spacing: 0;
+    white-space: nowrap;
+    font-size: clamp(36px, 10vw, 60px);
+}
+
+.flanker-arrow {
+    display: inline-block;
+}
+
+.flanker-answer {
+    min-width: 135px;
+    background: #667eea;
+    font-size: 20px;
+}
+
 /* Feedback */
 #feedback {
     margin-top: 20px;
