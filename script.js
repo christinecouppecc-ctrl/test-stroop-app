@@ -28,8 +28,22 @@ const JEUX = {
     }
 };
 
+const MODES_FORMES = {
+    1: {
+        nom: 'Version 1 — forme demandée',
+        instructions: 'Une forme est écrite en haut de l’écran. Cliquez le plus vite possible sur cette forme.',
+        prompt: 'Cliquez sur la forme demandée.'
+    },
+    2: {
+        nom: 'Version 2 — autre forme',
+        instructions: 'Une forme est écrite en haut de l’écran. Cliquez le plus vite possible sur n’importe quelle autre forme.',
+        prompt: 'Ne cliquez pas sur la forme demandée.'
+    }
+};
+
 // ============ SÉLECTEURS ============
 const screenHome = document.getElementById('screen-home');
+const screenFormMode = document.getElementById('screen-form-mode');
 const screenStart = document.getElementById('screen-start');
 const screenGame = document.getElementById('screen-game');
 const screenEnd = document.getElementById('screen-end');
@@ -38,7 +52,8 @@ const screenStats = document.getElementById('screen-stats');
 const gameConfigTitle = document.getElementById('game-config-title');
 const gameInstructions = document.getElementById('game-instructions');
 const gamePrompt = document.getElementById('game-prompt');
-const gameCards = document.querySelectorAll('.game-card');
+const gameCards = document.querySelectorAll('.game-card[data-game]');
+const formModeCards = document.querySelectorAll('[data-form-mode]');
 const playerInput = document.getElementById('player-input');
 const roundsInput = document.getElementById('rounds-input');
 const btnStart = document.getElementById('btn-start');
@@ -46,6 +61,7 @@ const btnRestart = document.getElementById('btn-restart');
 const btnEndStats = document.getElementById('btn-end-stats');
 const btnHome = document.getElementById('btn-home');
 const btnBackGames = document.getElementById('btn-back-games');
+const btnModeBack = document.getElementById('btn-mode-back');
 // PUBLIC_DEPLOYMENT_REMOVE_EMAIL_REFERENCE_START
 const btnEmailResults = document.getElementById('btn-email-results');
 // PUBLIC_DEPLOYMENT_REMOVE_EMAIL_REFERENCE_END
@@ -86,6 +102,7 @@ const statsTitle = document.getElementById('stats-title');
 // ============ VARIABLES DU JEU ============
 let joueur = '';
 let jeuActif = 'stroop';
+let modeFormes = 1;
 let nbTours = 10;
 let tourActuel = 0;
 let score = 0;
@@ -132,25 +149,70 @@ function descriptionTendanceReaction(tendance) {
     return descriptions[tendance] || 'Indéterminée';
 }
 
+function libelleJeuActif() {
+    return jeuActif === 'formes'
+        ? JEUX.formes.nom + ' — ' + MODES_FORMES[modeFormes].nom
+        : JEUX[jeuActif].nom;
+}
+
+function titreResultatsActif() {
+    return jeuActif === 'formes'
+        ? JEUX.formes.titreResultats + ' — ' + MODES_FORMES[modeFormes].nom
+        : JEUX[jeuActif].titreResultats;
+}
+
+function afficherConfigurationJeu() {
+    const configuration = jeuActif === 'formes'
+        ? MODES_FORMES[modeFormes]
+        : JEUX[jeuActif];
+    gameConfigTitle.textContent = libelleJeuActif();
+    gameInstructions.textContent = configuration.instructions;
+    gamePrompt.textContent = configuration.prompt;
+    btnBackGames.textContent = jeuActif === 'formes'
+        ? '← Choisir la version'
+        : '← Choisir un jeu';
+    document.title = libelleJeuActif();
+    screenStart.classList.remove('hidden');
+    playerInput.dispatchEvent(new Event('input'));
+}
+
 gameCards.forEach(card => {
     card.onclick = () => {
         jeuActif = card.dataset.game;
-        const jeu = JEUX[jeuActif];
-        gameConfigTitle.textContent = jeu.nom;
-        gameInstructions.textContent = jeu.instructions;
-        gamePrompt.textContent = jeu.prompt;
-        document.title = jeu.nom;
         screenHome.classList.add('hidden');
-        screenStart.classList.remove('hidden');
-        playerInput.dispatchEvent(new Event('input'));
+        if (jeuActif === 'formes') {
+            screenFormMode.classList.remove('hidden');
+            document.title = JEUX.formes.nom;
+            return;
+        }
+        afficherConfigurationJeu();
     };
 });
 
+formModeCards.forEach(card => {
+    card.onclick = () => {
+        modeFormes = Number(card.dataset.formMode);
+        screenFormMode.classList.add('hidden');
+        afficherConfigurationJeu();
+    };
+});
+
+btnModeBack.onclick = () => {
+    screenFormMode.classList.add('hidden');
+    screenHome.classList.remove('hidden');
+    document.title = 'Jeux de réflexion';
+};
+
 btnBackGames.onclick = () => {
     screenStart.classList.add('hidden');
-    screenHome.classList.remove('hidden');
+    if (jeuActif === 'formes') {
+        screenFormMode.classList.remove('hidden');
+        document.title = JEUX.formes.nom;
+    } else {
+        screenHome.classList.remove('hidden');
+        document.title = 'Jeux de réflexion';
+    }
     historyBox.classList.add('hidden');
-    document.title = 'Jeux de réflexion';
 };
 
 // ============ SAUVEGARDE (localStorage) ============
@@ -173,7 +235,8 @@ function partiesDe(nom) {
     return tout[nom].filter(partie =>
         jeuActif === 'stroop'
             ? !partie.jeu || partie.jeu === 'stroop'
-            : partie.jeu === jeuActif
+            : partie.jeu === jeuActif &&
+                Number(partie.modeFormes || 1) === modeFormes
     );
 }
 
@@ -251,6 +314,7 @@ btnHome.onclick = () => {
     clearTimeout(timeoutQuestion);
     screenEnd.classList.add('hidden');
     screenHome.classList.remove('hidden');
+    screenFormMode.classList.add('hidden');
     screenStart.classList.add('hidden');
     historyBox.classList.add('hidden');
     document.title = 'Jeux de réflexion';
@@ -259,7 +323,7 @@ btnHome.onclick = () => {
 // PUBLIC_DEPLOYMENT_REMOVE_EMAIL_HANDLER_START
 btnEmailResults.onclick = () => {
     const contenu = contenuDesResultats();
-    const sujet = JEUX[jeuActif].titreResultats + ' - ' + joueur;
+    const sujet = titreResultatsActif() + ' - ' + joueur;
 
     window.location.href = 'mailto:' + encodeURIComponent(window.STROOP_CONTACTS.email) + '?subject=' +
         encodeURIComponent(sujet) + '&body=' + encodeURIComponent(contenu);
@@ -276,7 +340,7 @@ function contenuDesResultats() {
         ? Math.round(tempsReactions.reduce((total, temps) => total + temps, 0) / tempsReactions.length)
         : 0;
     return [
-        JEUX[jeuActif].titreResultats,
+        titreResultatsActif(),
         'Joueur : ' + joueur,
         'Score : ' + score + '/' + nbTours,
         'Précision : ' + precision + '%',
@@ -291,7 +355,7 @@ btnEndStats.onclick = () => {
     clearTimeout(timeoutQuestion);
     screenEnd.classList.add('hidden');
     screenStats.classList.remove('hidden');
-    statsTitle.textContent = '📊 Statistiques — ' + JEUX[jeuActif].nom;
+    statsTitle.textContent = '📊 Statistiques — ' + libelleJeuActif();
     statsPlayerInput.value = joueur;
     afficherStats(joueur, true);
 };
@@ -377,7 +441,11 @@ function verifierReponse(choix, bonneReponse) {
         btn.disabled = true;
     });
 
-    if (choix === bonneReponse) {
+    const bonneReponseChoisie = jeuActif === 'formes' && modeFormes === 2
+        ? choix !== bonneReponse
+        : choix === bonneReponse;
+
+    if (bonneReponseChoisie) {
         score++;
         feedback.textContent = '✅ Correct ! (' + tempsReaction + ' ms)';
         feedback.className = 'good';
@@ -402,7 +470,7 @@ function finDuJeu() {
     const tendanceReaction = calculerTendanceReaction(tempsReactions);
 
     resultPlayer.textContent = '👤 ' + joueur;
-    resultGame.textContent = '🎮 ' + JEUX[jeuActif].nom;
+    resultGame.textContent = '🎮 ' + libelleJeuActif();
     resultScore.textContent = '🎯 Score : ' + score + '/' + nbTours;
     resultAccuracy.textContent = '📊 Précision : ' + precision + '%';
     resultReaction.textContent = '⚡ Temps de réaction moyen : ' + moyenne + ' ms';
@@ -424,7 +492,7 @@ function finDuJeu() {
     // Sauvegarder la partie
     const aujourdhui = new Date().toLocaleDateString('fr-FR') + ' ' +
                        new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    sauvegarderPartie({
+    const partie = {
         date: aujourdhui,
         score: score,
         tours: nbTours,
@@ -432,14 +500,16 @@ function finDuJeu() {
         reactionMoyenne: moyenne,
         tendanceReaction: tendanceReaction,
         jeu: jeuActif
-    });
+    };
+    if (jeuActif === 'formes') partie.modeFormes = modeFormes;
+    sauvegarderPartie(partie);
 }
 
 // ============ VOLET STATISTIQUES ============
 document.getElementById('btn-stats').onclick = () => {
     screenStart.classList.add('hidden');
     screenStats.classList.remove('hidden');
-    statsTitle.textContent = '📊 Statistiques — ' + JEUX[jeuActif].nom;
+    statsTitle.textContent = '📊 Statistiques — ' + libelleJeuActif();
 
     // Pré-remplir avec le nom déjà saisi si présent
     statsPlayerInput.value = playerInput.value.trim();
@@ -454,7 +524,7 @@ document.getElementById('btn-stats').onclick = () => {
 document.getElementById('btn-stats-back').onclick = () => {
     screenStats.classList.add('hidden');
     screenStart.classList.remove('hidden');
-    document.title = JEUX[jeuActif].nom;
+    document.title = libelleJeuActif();
 };
 
 document.getElementById('btn-stats-search').onclick = () => {
@@ -480,10 +550,11 @@ btnExportCsv.addEventListener('click', () => {
     if (parties.length === 0) return;
 
     const lignes = [
-        ['Joueur', 'Jeu', 'Date', 'Score', 'Nombre de tours', 'Précision (%)', 'Réaction moyenne (ms)', 'Tendance réaction'],
+        ['Joueur', 'Jeu', 'Version', 'Date', 'Score', 'Nombre de tours', 'Précision (%)', 'Réaction moyenne (ms)', 'Tendance réaction'],
         ...parties.map(partie => [
             nom,
             JEUX[jeuActif].nom,
+            jeuActif === 'formes' ? MODES_FORMES[modeFormes].nom : '',
             partie.date,
             partie.score,
             partie.tours,
@@ -502,8 +573,9 @@ btnExportCsv.addEventListener('click', () => {
     const url = URL.createObjectURL(fichier);
     const lien = document.createElement('a');
     const nomFichier = nom.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_') || 'joueur';
+    const suffixeMode = jeuActif === 'formes' ? '-mode-' + modeFormes : '';
     lien.href = url;
-    lien.download = 'parties-' + jeuActif + '-' + nomFichier + '-' +
+    lien.download = 'parties-' + jeuActif + suffixeMode + '-' + nomFichier + '-' +
         new Date().toISOString().slice(0, 10) + '.csv';
     document.body.appendChild(lien);
     lien.click();

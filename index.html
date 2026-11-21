@@ -20,11 +20,34 @@
                     <span>Repérez la couleur de l'encre.</span>
                 </button>
                 <button class="game-card" type="button" data-game="formes">
-                    <span class="game-icon" aria-hidden="true">◯ □ ★ △</span>
+                    <span class="game-icon game-shapes-logo" aria-hidden="true">
+                        <span class="shape-logo shape-logo-circle"></span>
+                        <span class="shape-logo shape-logo-square"></span>
+                        <span class="shape-logo shape-logo-star"></span>
+                        <span class="shape-logo shape-logo-triangle"></span>
+                    </span>
                     <strong>Jeu des formes</strong>
                     <span>Retrouvez la forme affichée.</span>
                 </button>
             </div>
+        </div>
+
+        <div id="screen-form-mode" class="hidden">
+            <h2>Choisissez une version</h2>
+            <p class="rule">Deux façons de répondre au nom de la forme affichée :</p>
+            <div class="game-picker">
+                <button class="game-card" type="button" data-form-mode="1">
+                    <span class="mode-icon" aria-hidden="true">✓</span>
+                    <strong>1 · Forme demandée</strong>
+                    <span>Cliquez sur la forme dont le nom est affiché.</span>
+                </button>
+                <button class="game-card" type="button" data-form-mode="2">
+                    <span class="mode-icon" aria-hidden="true">≠</span>
+                    <strong>2 · Autre forme</strong>
+                    <span>Cliquez sur n’importe quelle autre forme.</span>
+                </button>
+            </div>
+            <button id="btn-mode-back" class="btn-secondary">← Retour aux jeux</button>
         </div>
 
         <!-- Configuration du jeu sélectionné -->
