@@ -41,8 +41,8 @@ const JEUX = {
     nback: {
         nom: 'Tâche N-Back',
         titreResultats: 'Résultats de la tâche N-Back',
-        instructions: 'Mémorisez les stimuli. Pour chaque nouvel élément, indiquez s’il est identique à celui présenté N essais auparavant.',
-        prompt: 'Est-ce le même stimulus que celui présenté N essais auparavant ?'
+        instructions: 'Mémorisez les stimuli. Appuyez sur « Identique » uniquement si le stimulus correspond à celui présenté N essais auparavant; sinon, ne faites rien. Chaque stimulus change après DUREE s. Aucun temps de réaction n’est mesuré.',
+        prompt: 'Appuyez sur « Identique » si le stimulus correspond.'
     }
 };
 
@@ -87,6 +87,7 @@ const formModeCards = document.querySelectorAll('[data-form-mode]');
 const nbackOptions = document.getElementById('nback-options');
 const nbackLevelInput = document.getElementById('nback-level');
 const nbackTypeInput = document.getElementById('nback-type');
+const nbackDurationInput = document.getElementById('nback-duration');
 const playerInput = document.getElementById('player-input');
 const roundsInput = document.getElementById('rounds-input');
 const btnStart = document.getElementById('btn-start');
@@ -110,6 +111,7 @@ const resultPlayer = document.getElementById('result-player');
 const resultGame = document.getElementById('result-game');
 const resultScore = document.getElementById('result-score');
 const resultAccuracy = document.getElementById('result-accuracy');
+const resultFailure = document.getElementById('result-failure');
 const resultReaction = document.getElementById('result-reaction');
 const resultTrend = document.getElementById('result-trend');
 const resultRecord = document.getElementById('result-record');
@@ -130,6 +132,12 @@ const statBest = document.getElementById('stat-best');
 const statAvgAccuracy = document.getElementById('stat-avg-accuracy');
 const statAvgReaction = document.getElementById('stat-avg-reaction');
 const statLatestTrend = document.getElementById('stat-latest-trend');
+const statAvgAccuracyLabel = document.getElementById('stat-avg-accuracy-label');
+const statAvgReactionLabel = document.getElementById('stat-avg-reaction-label');
+const statLatestTrendLabel = document.getElementById('stat-latest-trend-label');
+const statsPrecisionHeader = document.getElementById('stats-precision-header');
+const statsReactionHeader = document.getElementById('stats-reaction-header');
+const statsTrendHeader = document.getElementById('stats-trend-header');
 const statsTitle = document.getElementById('stats-title');
 
 // ============ VARIABLES DU JEU ============
@@ -138,6 +146,7 @@ let jeuActif = 'stroop';
 let modeFormes = 1;
 let niveauNBack = 1;
 let typeStimulusNBack = 'lettres';
+let dureeNBack = 3;
 let nbTours = 10;
 let tourActuel = 0;
 let score = 0;
@@ -146,6 +155,7 @@ let tempsReactions = [];
 let essaisAxCpt = [];
 let sequenceNBack = [];
 let indexSequenceNBack = 0;
+let cibleNBackActuelle = false;
 let questionVerrouillee = false;
 let timeoutQuestion = null;
 
@@ -193,7 +203,7 @@ function libelleJeuActif() {
     }
     if (jeuActif === 'nback') {
         return JEUX.nback.nom + ' — N-' + niveauNBack + ' — ' +
-            LIBELLES_STIMULI_NBACK[typeStimulusNBack];
+            LIBELLES_STIMULI_NBACK[typeStimulusNBack] + ' — ' + dureeNBack + ' s/essai';
     }
     return JEUX[jeuActif].nom;
 }
@@ -204,7 +214,7 @@ function titreResultatsActif() {
     }
     if (jeuActif === 'nback') {
         return JEUX.nback.titreResultats + ' — N-' + niveauNBack + ' — ' +
-            LIBELLES_STIMULI_NBACK[typeStimulusNBack];
+            LIBELLES_STIMULI_NBACK[typeStimulusNBack] + ' — ' + dureeNBack + ' s/essai';
     }
     return JEUX[jeuActif].titreResultats;
 }
@@ -215,7 +225,9 @@ function afficherConfigurationJeu() {
         : JEUX[jeuActif];
     gameConfigTitle.textContent = libelleJeuActif();
     gameInstructions.textContent = jeuActif === 'nback'
-        ? configuration.instructions.replace('N essais', 'N-' + niveauNBack + ' essais')
+        ? configuration.instructions
+            .replace('N essais', 'N-' + niveauNBack + ' essais')
+            .replace('DUREE', String(dureeNBack))
         : configuration.instructions;
     gamePrompt.textContent = jeuActif === 'nback'
         ? configuration.prompt.replace('N essais', 'N-' + niveauNBack + ' essais')
@@ -257,6 +269,19 @@ nbackLevelInput.addEventListener('change', () => {
 
 nbackTypeInput.addEventListener('change', () => {
     typeStimulusNBack = nbackTypeInput.value;
+    if (jeuActif === 'nback') afficherConfigurationJeu();
+});
+
+function actualiserDureeNBack() {
+    const valeur = parseFloat(nbackDurationInput.value);
+    dureeNBack = Number.isFinite(valeur)
+        ? Math.min(10, Math.max(1, Math.round(valeur * 2) / 2))
+        : 3;
+    nbackDurationInput.value = String(dureeNBack);
+}
+
+nbackDurationInput.addEventListener('change', () => {
+    actualiserDureeNBack();
     if (jeuActif === 'nback') afficherConfigurationJeu();
 });
 
@@ -303,7 +328,8 @@ function partiesDe(nom) {
         if (jeuActif === 'nback') {
             return partie.jeu === 'nback' &&
                 Number(partie.niveauNBack) === niveauNBack &&
-                partie.typeStimulusNBack === typeStimulusNBack;
+                partie.typeStimulusNBack === typeStimulusNBack &&
+                Number(partie.dureeNBack || 3) === dureeNBack;
         }
         return partie.jeu ? partie.jeu === jeuActif : jeuActif === 'stroop';
     });
@@ -333,8 +359,10 @@ playerInput.addEventListener('input', () => {
         // 5 dernières parties (plus récentes en premier)
         [...parties].reverse().slice(0, 5).forEach(p => {
             const li = document.createElement('li');
-            li.textContent = p.date + ' — ' + p.score + '/' + p.tours +
-                ' (' + p.precision + '%, ' + p.reactionMoyenne + ' ms)';
+            const details = jeuActif === 'nback'
+                ? ' (' + p.precision + '% réussite, ' + (100 - p.precision) + '% échec)'
+                : ' (' + p.precision + '%, ' + p.reactionMoyenne + ' ms)';
+            li.textContent = p.date + ' — ' + p.score + '/' + p.tours + details;
             historyList.appendChild(li);
         });
 
@@ -355,6 +383,10 @@ btnStart.onclick = () => {
     }
 
     joueur = nom;
+    if (jeuActif === 'nback') {
+        actualiserDureeNBack();
+        gameConfigTitle.textContent = libelleJeuActif();
+    }
     nbTours = parseInt(roundsInput.value, 10);
     if (isNaN(nbTours) || nbTours < 5) nbTours = 5;
     if (nbTours > 50) nbTours = 50;
@@ -410,6 +442,18 @@ btnSmsResults.onclick = () => {
 
 function contenuDesResultats() {
     const precision = Math.round((score / nbTours) * 100);
+    if (jeuActif === 'nback') {
+        const echecs = nbTours - score;
+        return [
+            titreResultatsActif(),
+            'Joueur : ' + joueur,
+            'Réussites : ' + score + '/' + nbTours,
+            'Taux de réussite : ' + precision + '%',
+            'Échecs : ' + echecs + '/' + nbTours,
+            'Taux d’échec : ' + (100 - precision) + '%'
+        ].join('\n');
+    }
+
     const reactionMoyenne = tempsReactions.length
         ? Math.round(tempsReactions.reduce((total, temps) => total + temps, 0) / tempsReactions.length)
         : 0;
@@ -684,30 +728,38 @@ function prochaineQuestionNBack() {
     if (indexStimulus < niveauNBack) {
         progress.textContent = 'Mémoire ' + (indexStimulus + 1) + '/' + niveauNBack;
         gamePrompt.textContent = 'Mémorisez les premiers stimuli.';
-        timeoutQuestion = setTimeout(prochaineQuestion, 900);
+        timeoutQuestion = setTimeout(prochaineQuestion, dureeNBack * 1000);
         return;
     }
 
     tourActuel++;
     progress.textContent = tourActuel + '/' + nbTours;
-    gamePrompt.textContent = 'Est-ce le même stimulus qu’il y a ' +
-        niveauNBack + ' essai' + (niveauNBack > 1 ? 's' : '') + ' ?';
+    gamePrompt.textContent = 'Appuyez sur « Identique » si le stimulus correspond; sinon, ne faites rien.';
+    cibleNBackActuelle = stimulus === sequenceNBack[indexStimulus - niveauNBack];
 
-    [
-        { valeur: true, texte: 'Identique' },
-        { valeur: false, texte: 'Différent' }
-    ].forEach(reponse => {
-        const btn = document.createElement('button');
-        btn.className = 'answer-btn nback-answer';
-        btn.textContent = reponse.texte;
-        btn.onclick = () => verifierReponse(
-            reponse.valeur,
-            stimulus === sequenceNBack[indexStimulus - niveauNBack]
-        );
-        answersDiv.appendChild(btn);
+    const btn = document.createElement('button');
+    btn.className = 'answer-btn nback-answer';
+    btn.textContent = 'Identique';
+    btn.onclick = () => verifierReponseNBack(true);
+    answersDiv.appendChild(btn);
+
+    timeoutQuestion = setTimeout(() => {
+        if (!questionVerrouillee) verifierReponseNBack(false);
+        timeoutQuestion = setTimeout(prochaineQuestion, 600);
+    }, dureeNBack * 1000);
+}
+
+function verifierReponseNBack(aClique) {
+    if (questionVerrouillee) return;
+    questionVerrouillee = true;
+    answersDiv.querySelectorAll('button').forEach(btn => {
+        btn.disabled = true;
     });
 
-    tempsDebutQuestion = performance.now();
+    const reussite = aClique ? cibleNBackActuelle : !cibleNBackActuelle;
+    if (reussite) score++;
+    feedback.textContent = reussite ? '👍 Réussite !' : '👎 Échec !';
+    feedback.className = reussite ? 'good nback-feedback' : 'bad nback-feedback';
 }
 
 function verifierReponse(choix, bonneReponse) {
@@ -726,15 +778,12 @@ function verifierReponse(choix, bonneReponse) {
 
     if (bonneReponseChoisie) {
         score++;
-        const icone = jeuActif === 'nback' ? '👍' : '✅';
-        feedback.textContent = icone + ' Correct ! (' + tempsReaction + ' ms)';
+        feedback.textContent = '✅ Correct ! (' + tempsReaction + ' ms)';
         feedback.className = 'good';
     } else {
-        const icone = jeuActif === 'nback' ? '👎' : '❌';
-        feedback.textContent = icone + ' Faux ! (' + tempsReaction + ' ms)';
+        feedback.textContent = '❌ Faux ! (' + tempsReaction + ' ms)';
         feedback.className = 'bad';
     }
-    feedback.classList.toggle('nback-feedback', jeuActif === 'nback');
 
     // Pause de 600ms avant la question suivante
     timeoutQuestion = setTimeout(prochaineQuestion, 600);
@@ -745,19 +794,36 @@ function finDuJeu() {
     screenGame.classList.add('hidden');
     screenEnd.classList.remove('hidden');
 
+    const estNBack = jeuActif === 'nback';
     const precision = Math.round((score / nbTours) * 100);
-    const moyenne = tempsReactions.length
+    const echecs = nbTours - score;
+    const moyenne = !estNBack && tempsReactions.length
         ? Math.round(tempsReactions.reduce((a, b) => a + b, 0) / tempsReactions.length)
-        : 0;
-    const tendanceReaction = calculerTendanceReaction(tempsReactions);
+        : null;
+    const tendanceReaction = estNBack
+        ? 'indisponible'
+        : calculerTendanceReaction(tempsReactions);
 
     resultPlayer.textContent = '👤 ' + joueur;
     resultGame.textContent = '🎮 ' + libelleJeuActif();
-    resultScore.textContent = '🎯 Score : ' + score + '/' + nbTours;
-    resultAccuracy.textContent = '📊 Précision : ' + precision + '%';
-    resultReaction.textContent = '⚡ Temps de réaction moyen : ' + moyenne + ' ms';
-    resultTrend.textContent = '📈 Tendance des réactions : ' +
-        descriptionTendanceReaction(tendanceReaction);
+    resultScore.textContent = estNBack
+        ? '🎯 Réussites : ' + score + '/' + nbTours
+        : '🎯 Score : ' + score + '/' + nbTours;
+    resultAccuracy.textContent = estNBack
+        ? '📊 Taux de réussite : ' + precision + '%'
+        : '📊 Précision : ' + precision + '%';
+    resultFailure.classList.toggle('hidden', !estNBack);
+    resultFailure.textContent = estNBack
+        ? '📉 Échecs : ' + echecs + '/' + nbTours + ' — Taux d’échec : ' + (100 - precision) + '%'
+        : '';
+    resultReaction.classList.toggle('hidden', estNBack);
+    resultReaction.textContent = estNBack
+        ? ''
+        : '⚡ Temps de réaction moyen : ' + moyenne + ' ms';
+    resultTrend.classList.toggle('hidden', estNBack);
+    resultTrend.textContent = estNBack
+        ? ''
+        : '📈 Tendance des réactions : ' + descriptionTendanceReaction(tendanceReaction);
 
     // Est-ce un nouveau record pour ce joueur ?
     const anciennes = partiesDe(joueur);
@@ -787,6 +853,7 @@ function finDuJeu() {
     if (jeuActif === 'nback') {
         partie.niveauNBack = niveauNBack;
         partie.typeStimulusNBack = typeStimulusNBack;
+        partie.dureeNBack = dureeNBack;
     }
     sauvegarderPartie(partie);
 }
@@ -829,30 +896,42 @@ statsRoundFilter.addEventListener('change', () => {
 btnExportCsv.addEventListener('click', () => {
     const nom = statsPlayerInput.value.trim();
     const filtreTours = statsRoundFilter.value;
+    const estNBack = jeuActif === 'nback';
     const parties = partiesDe(nom).filter(partie =>
         filtreTours === '' || Number(partie.tours) === Number(filtreTours)
     );
 
     if (parties.length === 0) return;
 
-    const lignes = [
-        ['Joueur', 'Jeu', 'Version', 'Date', 'Score', 'Nombre de tours', 'Précision (%)', 'Réaction moyenne (ms)', 'Tendance réaction'],
-        ...parties.map(partie => [
-            nom,
-            JEUX[jeuActif].nom,
-            jeuActif === 'formes'
-                ? MODES_FORMES[modeFormes].nom
-                : jeuActif === 'nback'
-                    ? 'N-' + niveauNBack + ' — ' + LIBELLES_STIMULI_NBACK[typeStimulusNBack]
-                    : '',
-            partie.date,
-            partie.score,
-            partie.tours,
-            partie.precision,
-            partie.reactionMoyenne,
-            libelleTendanceReaction(partie.tendanceReaction)
-        ])
-    ];
+    const lignes = estNBack
+        ? [
+            ['Joueur', 'Jeu', 'Configuration', 'Date', 'Réussites', 'Nombre de tours', 'Taux de réussite (%)', 'Taux d’échec (%)'],
+            ...parties.map(partie => [
+                nom,
+                JEUX[jeuActif].nom,
+                'N-' + niveauNBack + ' — ' + LIBELLES_STIMULI_NBACK[typeStimulusNBack] +
+                    ' — ' + dureeNBack + ' s/essai',
+                partie.date,
+                partie.score,
+                partie.tours,
+                partie.precision,
+                100 - partie.precision
+            ])
+        ]
+        : [
+            ['Joueur', 'Jeu', 'Version', 'Date', 'Score', 'Nombre de tours', 'Précision (%)', 'Réaction moyenne (ms)', 'Tendance réaction'],
+            ...parties.map(partie => [
+                nom,
+                JEUX[jeuActif].nom,
+                jeuActif === 'formes' ? MODES_FORMES[modeFormes].nom : '',
+                partie.date,
+                partie.score,
+                partie.tours,
+                partie.precision,
+                partie.reactionMoyenne,
+                libelleTendanceReaction(partie.tendanceReaction)
+            ])
+        ];
     const csv = lignes.map(ligne => ligne.map(valeur => {
         const texte = String(valeur == null ? '' : valeur);
         const texteSecurise = /^[\s]*[=+\-@]/.test(texte) ? "'" + texte : texte;
@@ -865,7 +944,8 @@ btnExportCsv.addEventListener('click', () => {
     const nomFichier = nom.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_') || 'joueur';
     const suffixeMode = jeuActif === 'formes' ? '-mode-' + modeFormes : '';
     const suffixeNBack = jeuActif === 'nback'
-        ? '-n' + niveauNBack + '-' + typeStimulusNBack
+        ? '-n' + niveauNBack + '-' + typeStimulusNBack + '-' +
+            String(dureeNBack).replace('.', '_') + 's'
         : '';
     lien.href = url;
     lien.download = 'parties-' + jeuActif + suffixeMode + suffixeNBack + '-' + nomFichier + '-' +
@@ -877,6 +957,16 @@ btnExportCsv.addEventListener('click', () => {
 });
 
 function afficherStats(nom, reinitialiserFiltre) {
+    const estNBack = jeuActif === 'nback';
+    statAvgAccuracyLabel.textContent = estNBack ? 'taux de réussite moyen' : 'précision moyenne';
+    statAvgReactionLabel.textContent = estNBack ? 'taux d’échec moyen' : 'réaction moyenne';
+    statLatestTrendLabel.textContent = estNBack
+        ? 'taux d’échec de la dernière partie'
+        : 'tendance de la dernière partie';
+    statsPrecisionHeader.textContent = estNBack ? 'Taux de réussite' : 'Précision';
+    statsReactionHeader.textContent = estNBack ? 'Taux d’échec' : 'Réaction';
+    statsTrendHeader.hidden = estNBack;
+
     const toutesLesParties = partiesDe(nom);
 
     if (nom === '' || toutesLesParties.length === 0) {
@@ -937,13 +1027,18 @@ function afficherStats(nom, reinitialiserFiltre) {
     );
     statAvgAccuracy.textContent = precMoyenne + '%';
 
-    const reacMoyenne = Math.round(
-        parties.reduce((a, p) => a + p.reactionMoyenne, 0) / parties.length
-    );
-    statAvgReaction.textContent = reacMoyenne + ' ms';
-    statLatestTrend.textContent = libelleTendanceReaction(
-        parties[parties.length - 1].tendanceReaction
-    );
+    if (estNBack) {
+        statAvgReaction.textContent = 100 - precMoyenne + '%';
+        statLatestTrend.textContent = 100 - parties[parties.length - 1].precision + '%';
+    } else {
+        const reacMoyenne = Math.round(
+            parties.reduce((a, p) => a + p.reactionMoyenne, 0) / parties.length
+        );
+        statAvgReaction.textContent = reacMoyenne + ' ms';
+        statLatestTrend.textContent = libelleTendanceReaction(
+            parties[parties.length - 1].tendanceReaction
+        );
+    }
 
     // ---- Tableau détaillé (plus récentes en premier) ----
     statsTableBody.innerHTML = '';
@@ -960,9 +1055,10 @@ function afficherStats(nom, reinitialiserFiltre) {
         const tdPrecision = document.createElement('td');
         tdPrecision.textContent = p.precision + '%';
         const tdReaction = document.createElement('td');
-        tdReaction.textContent = p.reactionMoyenne + ' ms';
+        tdReaction.textContent = estNBack ? (100 - p.precision) + '%' : p.reactionMoyenne + ' ms';
         const tdTrend = document.createElement('td');
         tdTrend.textContent = libelleTendanceReaction(p.tendanceReaction);
+        tdTrend.hidden = estNBack;
 
         tr.appendChild(tdDate);
         tr.appendChild(tdScore);

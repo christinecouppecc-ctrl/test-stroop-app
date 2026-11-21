@@ -84,6 +84,8 @@
                     <option value="formes">Formes</option>
                     <option value="chiffres">Chiffres</option>
                 </select>
+                <label for="nback-duration">Durée par stimulus (secondes) :</label>
+                <input type="number" id="nback-duration" min="1" max="10" step="0.5" value="3">
             </div>
 
             <div class="config">
@@ -130,6 +132,7 @@
             <p id="result-player" class="result-line"></p>
             <p id="result-score" class="result-line"></p>
             <p id="result-accuracy" class="result-line"></p>
+            <p id="result-failure" class="result-line hidden"></p>
             <p id="result-reaction" class="result-line"></p>
             <p id="result-trend" class="result-line"></p>
             <p id="result-record" class="result-line record"></p>
@@ -174,15 +177,15 @@
                     </div>
                     <div class="stat-card">
                         <span class="stat-value" id="stat-avg-accuracy">0%</span>
-                        <span class="stat-label">précision moyenne</span>
+                        <span class="stat-label" id="stat-avg-accuracy-label">précision moyenne</span>
                     </div>
                     <div class="stat-card">
                         <span class="stat-value" id="stat-avg-reaction">0 ms</span>
-                        <span class="stat-label">réaction moyenne</span>
+                        <span class="stat-label" id="stat-avg-reaction-label">réaction moyenne</span>
                     </div>
                     <div class="stat-card">
                         <span class="stat-value" id="stat-latest-trend">—</span>
-                        <span class="stat-label">tendance de la dernière partie</span>
+                        <span class="stat-label" id="stat-latest-trend-label">tendance de la dernière partie</span>
                     </div>
                 </div>
 
@@ -194,9 +197,9 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Score</th>
-                                <th>Précision</th>
-                                <th>Réaction</th>
-                                <th>Tendance</th>
+                                <th id="stats-precision-header">Précision</th>
+                                <th id="stats-reaction-header">Réaction</th>
+                                <th id="stats-trend-header">Tendance</th>
                             </tr>
                         </thead>
                         <tbody id="stats-table-body"></tbody>
