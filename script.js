@@ -92,6 +92,15 @@ function libelleTendanceReaction(tendance) {
     return libelles[tendance] || '—';
 }
 
+function descriptionTendanceReaction(tendance) {
+    const descriptions = {
+        acceleration: 'Accélération (temps de réaction en baisse)',
+        ralentissement: 'Ralentissement (temps de réaction en hausse)',
+        stable: 'Stable (pas de tendance nette)'
+    };
+    return descriptions[tendance] || 'Indéterminée';
+}
+
 // ============ SAUVEGARDE (localStorage) ============
 function chargerToutesLesParties() {
     try {
@@ -212,7 +221,10 @@ function contenuDesResultats() {
         'Joueur : ' + joueur,
         'Score : ' + score + '/' + nbTours,
         'Précision : ' + precision + '%',
-        'Temps de réaction moyen : ' + reactionMoyenne + ' ms'
+        'Temps de réaction moyen : ' + reactionMoyenne + ' ms',
+        'Tendance des réactions : ' + descriptionTendanceReaction(
+            calculerTendanceReaction(tempsReactions)
+        )
     ].join('\n');
 }
 
@@ -307,7 +319,7 @@ function finDuJeu() {
     resultAccuracy.textContent = '📊 Précision : ' + precision + '%';
     resultReaction.textContent = '⚡ Temps de réaction moyen : ' + moyenne + ' ms';
     resultTrend.textContent = '📈 Tendance des réactions : ' +
-        libelleTendanceReaction(tendanceReaction).toLowerCase();
+        descriptionTendanceReaction(tendanceReaction);
 
     // Est-ce un nouveau record pour ce joueur ?
     const anciennes = partiesDe(joueur);
