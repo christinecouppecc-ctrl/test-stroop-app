@@ -21,7 +21,6 @@ const btnHome = document.getElementById('btn-home');
 // PUBLIC_DEPLOYMENT_REMOVE_EMAIL_REFERENCE_START
 const btnEmailResults = document.getElementById('btn-email-results');
 // PUBLIC_DEPLOYMENT_REMOVE_EMAIL_REFERENCE_END
-const smsPhoneInput = document.getElementById('sms-phone-input');
 const btnSmsResults = document.getElementById('btn-sms-results');
 
 const playerName = document.getElementById('player-name');
@@ -169,14 +168,7 @@ btnEmailResults.onclick = () => {
 // PUBLIC_DEPLOYMENT_REMOVE_EMAIL_HANDLER_END
 
 btnSmsResults.onclick = () => {
-    const numero = smsPhoneInput.value.trim().replace(/[\s().-]/g, '');
-    if (!/^\+?\d{6,15}$/.test(numero)) {
-        alert('Veuillez saisir un numéro valide (6 à 15 chiffres).');
-        smsPhoneInput.focus();
-        return;
-    }
-
-    window.location.href = 'sms:' + numero + '?body=' + encodeURIComponent(contenuDesResultats());
+    window.location.href = 'sms:?body=' + encodeURIComponent(contenuDesResultats());
 };
 
 function contenuDesResultats() {

@@ -79,11 +79,6 @@ h3 {
     gap: 8px;
 }
 
-.sms-share input {
-    width: min(280px, 100%);
-    margin-left: 0;
-}
-
 .sms-share small {
     color: #777;
     font-size: 13px;
