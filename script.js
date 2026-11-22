@@ -724,6 +724,8 @@ function creerSequenceNBack(nombreTours, niveau, typeStimulus) {
 function afficherStimulusNBack(stimulus) {
     wordDiv.classList.remove('flanker-stimulus');
     wordDiv.classList.toggle('nback-shape-stimulus', typeStimulusNBack === 'formes');
+    wordDiv.classList.remove('nback-stimulus-blank');
+    wordDiv.removeAttribute('aria-hidden');
     wordDiv.style.color = '#333';
     wordDiv.innerHTML = '';
 
@@ -759,7 +761,10 @@ function prochaineQuestionNBack() {
     if (indexStimulus < niveauNBack) {
         progress.textContent = 'Mémoire ' + (indexStimulus + 1) + '/' + niveauNBack;
         gamePrompt.textContent = 'Mémorisez les premiers stimuli.';
-        timeoutQuestion = setTimeout(prochaineQuestion, dureeNBack * 1000);
+        timeoutQuestion = setTimeout(() => {
+            masquerStimulusNBack();
+            timeoutQuestion = setTimeout(prochaineQuestion, 600);
+        }, dureeNBack * 1000);
         return;
     }
 
@@ -776,8 +781,14 @@ function prochaineQuestionNBack() {
 
     timeoutQuestion = setTimeout(() => {
         if (!questionVerrouillee) verifierReponseNBack(false);
+        masquerStimulusNBack();
         timeoutQuestion = setTimeout(prochaineQuestion, 600);
     }, dureeNBack * 1000);
+}
+
+function masquerStimulusNBack() {
+    wordDiv.classList.add('nback-stimulus-blank');
+    wordDiv.setAttribute('aria-hidden', 'true');
 }
 
 function verifierReponseNBack(aClique) {
@@ -800,7 +811,7 @@ function verifierReponseNBack(aClique) {
     } else {
         nonCiblesIgnoreesNBack++;
         feedback.textContent = '➖ Non-cible ignorée (non comptabilisée).';
-        feedback.className = 'nback-feedback';
+        feedback.className = 'nback-feedback nback-feedback-neutral';
     }
 }
 

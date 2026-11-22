@@ -382,8 +382,16 @@ h3 {
 }
 
 #feedback.nback-feedback {
-    font-size: 28px;
+    font-size: 18px;
     font-weight: bold;
+}
+
+#feedback.nback-feedback-neutral {
+    font-size: 15px;
+}
+
+#word.nback-stimulus-blank {
+    visibility: hidden;
 }
 
 /* Écran de fin */
