@@ -50,7 +50,7 @@ const JEUX = {
     t3a: {
         nom: 'Attention partagée (inspirée du T3A)',
         titreResultats: 'Résultats de l’attention partagée',
-        instructions: 'Surveillez les deux zones en même temps. Pour les formes, une forme non-cible fixe est affichée; toutes les 15 secondes, une forme aléatoire la remplace pendant 3 secondes, puis la forme fixe revient. Espace sur une cible ou absence d’Espace sur une non-cible = réussite; Espace sur une non-cible ou absence d’Espace sur une cible = erreur. Pour les couleurs, cliquez sur la cible; une cible couleur ignorée compte comme erreur. Les résultats des deux tâches sont séparés.',
+        instructions: 'Surveillez les deux zones en même temps. Pour les formes, une forme non-cible fixe est affichée; toutes les 15 secondes, une forme aléatoire la remplace pendant 3 secondes, puis la forme fixe revient. Espace sur une cible ou absence d’Espace sur une non-cible = réussite; Espace sur une non-cible ou absence d’Espace sur une cible = erreur. Pour les couleurs : clic sur la cible = réussite; clic sur une non-cible = erreur; cible ignorée = erreur; non-cible ignorée = non comptabilisée. Les résultats des deux tâches sont séparés.',
         prompt: 'Espace pour la forme cible · Clic pour la couleur cible.'
     }
 };
