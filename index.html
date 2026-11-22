@@ -44,6 +44,12 @@
                     <strong>Tâche N-Back</strong>
                     <span>Retrouvez le stimulus vu N essais plus tôt.</span>
                 </button>
+                <button class="game-card" type="button" data-game="t3a">
+                    <span class="game-icon" aria-hidden="true">◉◉</span>
+                    <strong>Attention partagée (T3A)</strong>
+                    <span>Entraînement à deux flux visuels.</span>
+                    <span class="game-availability">Uniquement sur ordinateur, pas sur téléphone.</span>
+                </button>
             </div>
         </div>
 
@@ -88,12 +94,32 @@
                 <input type="number" id="nback-duration" min="1" max="10" step="0.5" value="3">
             </div>
 
+            <div id="t3a-options" class="config t3a-options" hidden>
+                <label for="t3a-rounds">Nombre de manches :</label>
+                <input type="number" id="t3a-rounds" min="1" max="10" step="1" value="4">
+                <label for="t3a-round-duration">Durée par manche (secondes) :</label>
+                <input type="number" id="t3a-round-duration" min="30" max="120" step="1" value="90">
+                <label for="t3a-break-duration">Pause entre les manches (secondes) :</label>
+                <input type="number" id="t3a-break-duration" min="20" max="60" step="1" value="30">
+                <fieldset class="t3a-target-options">
+                    <legend>Cibles entre les manches</legend>
+                    <label>
+                        <input type="checkbox" id="t3a-change-shape">
+                        Changer la forme cible
+                    </label>
+                    <label>
+                        <input type="checkbox" id="t3a-change-color">
+                        Changer la couleur cible
+                    </label>
+                </fieldset>
+            </div>
+
             <div class="config">
                 <label for="player-input">Nom du joueur :</label>
                 <input type="text" id="player-input" placeholder="Votre nom" maxlength="20">
             </div>
 
-            <div class="config">
+            <div id="rounds-config" class="config">
                 <label for="rounds-input">Nombre de tours :</label>
                 <input type="number" id="rounds-input" min="5" max="50" value="10">
             </div>
@@ -114,10 +140,41 @@
         <div id="screen-game" class="hidden">
             <div class="score-bar">
                 <span>Joueur : <strong id="player-name"></strong></span>
-                <span>Question : <strong id="progress">1/10</strong></span>
+                <span><span id="progress-label">Question :</span> <strong id="progress">1/10</strong></span>
             </div>
 
             <p id="game-prompt" class="rule"></p>
+            <div id="t3a-game" class="hidden">
+                <div class="t3a-status">
+                    <span>Manche <strong id="t3a-round-number">1/4</strong></span>
+                    <span>Temps restant <strong id="t3a-round-time">1:30</strong></span>
+                    <span id="t3a-live-score">Réussites : 0 · Erreurs : 0</span>
+                    <span id="t3a-response-feedback" aria-live="polite"></span>
+                </div>
+
+                <div id="t3a-board" class="t3a-board">
+                    <section class="t3a-zone" aria-label="Zone des formes">
+                        <h3>Formes</h3>
+                        <div id="t3a-left-stimulus" class="t3a-stimulus" role="img"></div>
+                        <button id="btn-t3a-left" class="t3a-response" type="button">ÉTOILE</button>
+                    </section>
+                    <section class="t3a-zone" aria-label="Zone des couleurs">
+                        <h3>Couleurs</h3>
+                        <div id="t3a-right-stimulus" class="t3a-stimulus" role="img"></div>
+                        <button id="btn-t3a-right" class="t3a-response" type="button">ROUGE</button>
+                    </section>
+                </div>
+
+                <div id="t3a-break-screen" class="t3a-break-screen hidden" aria-live="polite">
+                    <strong>Pause entre les manches</strong>
+                    <span>Reprise dans <strong id="t3a-break-time">30</strong> s</span>
+                </div>
+
+                <div id="t3a-rotate-message" class="t3a-rotate-message hidden" role="status">
+                    <strong>Tournez votre téléphone en paysage</strong>
+                    <span>Le chronomètre attendra que l’écran soit en mode paysage.</span>
+                </div>
+            </div>
             <div id="word"></div>
 
             <div id="answers"></div>
@@ -161,7 +218,7 @@
 
             <div id="stats-content" class="hidden">
                 <div class="config stats-filter">
-                    <label for="stats-round-filter">Filtrer par nombre de tours :</label>
+                    <label id="stats-round-filter-label" for="stats-round-filter">Filtrer par nombre de tours :</label>
                     <select id="stats-round-filter">
                         <option value="">Toutes les parties</option>
                     </select>
@@ -174,7 +231,7 @@
                     </div>
                     <div class="stat-card">
                         <span class="stat-value" id="stat-best">0</span>
-                        <span class="stat-label">meilleur score</span>
+                        <span class="stat-label" id="stat-best-label">meilleur score</span>
                     </div>
                     <div class="stat-card">
                         <span class="stat-value" id="stat-avg-accuracy">0%</span>

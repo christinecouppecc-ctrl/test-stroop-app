@@ -12,7 +12,6 @@ const FORMES = [
     { nom: 'ÉTOILE', id: 'etoile', classe: 'shape-star' },
     { nom: 'TRIANGLE', id: 'triangle', classe: 'shape-triangle' }
 ];
-
 const JEUX = {
     stroop: {
         nom: 'Test de Stroop',
@@ -43,6 +42,12 @@ const JEUX = {
         titreResultats: 'Résultats de la tâche N-Back',
         instructions: 'Mémorisez les stimuli. Appuyez sur « Identique » uniquement si le stimulus correspond à celui présenté N essais auparavant; sinon, ne faites rien. Un oubli de cible ou un clic sur une non-cible est un échec; une non-cible ignorée est exclue des taux. Chaque stimulus change après DUREE s. Aucun temps de réaction n’est mesuré.',
         prompt: 'Appuyez sur « Identique » pour une cible; une non-cible ignorée n’est pas comptée.'
+    },
+    t3a: {
+        nom: 'Attention partagée (inspirée du T3A)',
+        titreResultats: 'Résultats de l’attention partagée',
+        instructions: 'Surveillez les deux zones en même temps et répondez lorsque la cible indiquée sous une zone apparaît. Les stimuli changent toutes les 800 ms. Version d’entraînement à deux flux visuels, sans flux auditif.',
+        prompt: 'Répondez uniquement aux cibles indiquées sous les zones.'
     }
 };
 
@@ -88,6 +93,13 @@ const nbackOptions = document.getElementById('nback-options');
 const nbackLevelInput = document.getElementById('nback-level');
 const nbackTypeInput = document.getElementById('nback-type');
 const nbackDurationInput = document.getElementById('nback-duration');
+const t3aOptions = document.getElementById('t3a-options');
+const t3aRoundsInput = document.getElementById('t3a-rounds');
+const t3aRoundDurationInput = document.getElementById('t3a-round-duration');
+const t3aBreakDurationInput = document.getElementById('t3a-break-duration');
+const t3aChangeShapeInput = document.getElementById('t3a-change-shape');
+const t3aChangeColorInput = document.getElementById('t3a-change-color');
+const roundsConfig = document.getElementById('rounds-config');
 const playerInput = document.getElementById('player-input');
 const roundsInput = document.getElementById('rounds-input');
 const btnStart = document.getElementById('btn-start');
@@ -103,9 +115,23 @@ const btnSmsResults = document.getElementById('btn-sms-results');
 
 const playerName = document.getElementById('player-name');
 const progress = document.getElementById('progress');
+const progressLabel = document.getElementById('progress-label');
 const wordDiv = document.getElementById('word');
 const answersDiv = document.getElementById('answers');
 const feedback = document.getElementById('feedback');
+const t3aGame = document.getElementById('t3a-game');
+const t3aBoard = document.getElementById('t3a-board');
+const t3aLeftStimulus = document.getElementById('t3a-left-stimulus');
+const t3aRightStimulus = document.getElementById('t3a-right-stimulus');
+const t3aRoundNumber = document.getElementById('t3a-round-number');
+const t3aRoundTime = document.getElementById('t3a-round-time');
+const t3aLiveScore = document.getElementById('t3a-live-score');
+const t3aResponseFeedback = document.getElementById('t3a-response-feedback');
+const t3aBreakScreen = document.getElementById('t3a-break-screen');
+const t3aBreakTime = document.getElementById('t3a-break-time');
+const t3aRotateMessage = document.getElementById('t3a-rotate-message');
+const btnT3aLeft = document.getElementById('btn-t3a-left');
+const btnT3aRight = document.getElementById('btn-t3a-right');
 
 const resultPlayer = document.getElementById('result-player');
 const resultGame = document.getElementById('result-game');
@@ -130,12 +156,14 @@ const btnExportCsv = document.getElementById('btn-export-csv');
 const statsTableBody = document.getElementById('stats-table-body');
 const statTotal = document.getElementById('stat-total');
 const statBest = document.getElementById('stat-best');
+const statBestLabel = document.getElementById('stat-best-label');
 const statAvgAccuracy = document.getElementById('stat-avg-accuracy');
 const statAvgReaction = document.getElementById('stat-avg-reaction');
 const statLatestTrend = document.getElementById('stat-latest-trend');
 const statAvgAccuracyLabel = document.getElementById('stat-avg-accuracy-label');
 const statAvgReactionLabel = document.getElementById('stat-avg-reaction-label');
 const statLatestTrendLabel = document.getElementById('stat-latest-trend-label');
+const statsRoundFilterLabel = document.getElementById('stats-round-filter-label');
 const statsPrecisionHeader = document.getElementById('stats-precision-header');
 const statsReactionHeader = document.getElementById('stats-reaction-header');
 const statsTrendHeader = document.getElementById('stats-trend-header');
@@ -160,6 +188,32 @@ let cibleNBackActuelle = false;
 let echecsNBack = 0;
 let essaisComptabilisesNBack = 0;
 let nonCiblesIgnoreesNBack = 0;
+let nombreManchesT3A = 4;
+let dureeMancheT3A = 90;
+let dureePauseT3A = 30;
+let changerFormeCibleT3A = false;
+let changerCouleurCibleT3A = false;
+let formeCibleT3A = 'etoile';
+let couleurCibleT3A = 'ROUGE';
+let mancheT3AActuelle = 1;
+let phaseT3A = 'inactive';
+let horlogeT3A = null;
+let dernierTickT3A = 0;
+let tempsEcouleMancheT3A = 0;
+let tempsEcoulePauseT3A = 0;
+let tempsStimulusT3A = 0;
+let debutStimulusT3A = 0;
+let formeT3AActuelle = '';
+let couleurT3AActuelle = null;
+let reponseFormeT3A = false;
+let reponseCouleurT3A = false;
+let ciblesT3A = 0;
+let detectionsT3A = 0;
+let ciblesManqueesT3A = 0;
+let ciblesCouleurManqueesT3A = 0;
+let faussesAlertesT3A = 0;
+let decisionsT3A = 0;
+let reactionsT3A = [];
 let questionVerrouillee = false;
 let timeoutQuestion = null;
 const toursParJeu = {
@@ -167,7 +221,8 @@ const toursParJeu = {
     formes: 10,
     flanker: 10,
     'ax-cpt': 10,
-    nback: 10
+    nback: 10,
+    t3a: 4
 };
 
 roundsInput.addEventListener('input', () => {
@@ -215,6 +270,28 @@ function descriptionTendanceReaction(tendance) {
     return descriptions[tendance] || 'Indéterminée';
 }
 
+function actualiserConfigurationT3A() {
+    const manches = parseInt(t3aRoundsInput.value, 10);
+    const duree = parseInt(t3aRoundDurationInput.value, 10);
+    const pause = parseInt(t3aBreakDurationInput.value, 10);
+
+    nombreManchesT3A = Number.isFinite(manches)
+        ? Math.min(10, Math.max(1, manches))
+        : 4;
+    dureeMancheT3A = Number.isFinite(duree)
+        ? Math.min(120, Math.max(30, duree))
+        : 90;
+    dureePauseT3A = Number.isFinite(pause)
+        ? Math.min(60, Math.max(20, pause))
+        : 30;
+
+    t3aRoundsInput.value = String(nombreManchesT3A);
+    t3aRoundDurationInput.value = String(dureeMancheT3A);
+    t3aBreakDurationInput.value = String(dureePauseT3A);
+    changerFormeCibleT3A = t3aChangeShapeInput.checked;
+    changerCouleurCibleT3A = t3aChangeColorInput.checked;
+}
+
 function libelleJeuActif() {
     if (jeuActif === 'formes') {
         return JEUX.formes.nom + ' — ' + MODES_FORMES[modeFormes].nom;
@@ -222,6 +299,11 @@ function libelleJeuActif() {
     if (jeuActif === 'nback') {
         return JEUX.nback.nom + ' — N-' + niveauNBack + ' — ' +
             LIBELLES_STIMULI_NBACK[typeStimulusNBack] + ' — ' + dureeNBack + ' s/essai';
+    }
+    if (jeuActif === 't3a') {
+        return JEUX.t3a.nom + ' — ' + nombreManchesT3A +
+            (nombreManchesT3A === 1 ? ' manche de ' : ' manches de ') +
+            dureeMancheT3A + ' s, pause ' + dureePauseT3A + ' s';
     }
     return JEUX[jeuActif].nom;
 }
@@ -233,6 +315,11 @@ function titreResultatsActif() {
     if (jeuActif === 'nback') {
         return JEUX.nback.titreResultats + ' — N-' + niveauNBack + ' — ' +
             LIBELLES_STIMULI_NBACK[typeStimulusNBack] + ' — ' + dureeNBack + ' s/essai';
+    }
+    if (jeuActif === 't3a') {
+        return JEUX.t3a.titreResultats + ' — ' + nombreManchesT3A +
+            (nombreManchesT3A === 1 ? ' manche de ' : ' manches de ') +
+            dureeMancheT3A + ' s';
     }
     return JEUX[jeuActif].titreResultats;
 }
@@ -251,7 +338,12 @@ function afficherConfigurationJeu() {
         ? configuration.prompt.replace('N essais', 'N-' + niveauNBack + ' essais')
         : configuration.prompt;
     nbackOptions.hidden = jeuActif !== 'nback';
-    roundsInput.value = toursParJeu[jeuActif];
+    t3aOptions.hidden = jeuActif !== 't3a';
+    roundsConfig.hidden = jeuActif === 't3a';
+    if (jeuActif === 't3a') {
+        gameInstructions.textContent += ' La cible de forme reste fixe pendant une manche; les formes présentées changent à chaque stimulus. Les options cochées font varier les cibles entre les manches.';
+    }
+    if (jeuActif !== 't3a') roundsInput.value = toursParJeu[jeuActif];
     btnBackGames.textContent = jeuActif === 'formes'
         ? '← Choisir la version'
         : '← Choisir un jeu';
@@ -304,6 +396,14 @@ nbackDurationInput.addEventListener('change', () => {
     if (jeuActif === 'nback') afficherConfigurationJeu();
 });
 
+[t3aRoundsInput, t3aRoundDurationInput, t3aBreakDurationInput,
+    t3aChangeShapeInput, t3aChangeColorInput].forEach(input => {
+    input.addEventListener('change', () => {
+        actualiserConfigurationT3A();
+        if (jeuActif === 't3a') afficherConfigurationJeu();
+    });
+});
+
 btnModeBack.onclick = () => {
     screenFormMode.classList.add('hidden');
     screenHome.classList.remove('hidden');
@@ -351,6 +451,11 @@ function partiesDe(nom) {
                 Number(partie.dureeNBack || 3) === dureeNBack &&
                 partie.versionScoringNBack === 2;
         }
+        if (jeuActif === 't3a') {
+            return partie.jeu === 't3a' &&
+                Number(partie.dureeManche) === dureeMancheT3A &&
+                Number(partie.dureePause) === dureePauseT3A;
+        }
         return partie.jeu ? partie.jeu === jeuActif : jeuActif === 'stroop';
     });
 }
@@ -381,16 +486,21 @@ playerInput.addEventListener('input', () => {
             const li = document.createElement('li');
             const scorePartie = jeuActif === 'nback'
                 ? p.score + '/' + p.essaisComptabilises
-                : p.score + '/' + p.tours;
+                : jeuActif === 't3a'
+                    ? p.detections + '/' + p.cibles + ' cibles'
+                    : p.score + '/' + p.tours;
             const details = jeuActif === 'nback'
                 ? ' (' + p.tauxEchec + '% échec, ' + p.nonCiblesIgnorees + ' non-cibles ignorées)'
-                : ' (' + p.precision + '%, ' + p.reactionMoyenne + ' ms)';
+                : ' (' + p.precision + '%, ' +
+                    (p.reactionMoyenne == null ? '—' : p.reactionMoyenne + ' ms') + ')';
             li.textContent = p.date + ' — ' + scorePartie + details;
             historyList.appendChild(li);
         });
 
         const meilleur = Math.max(...parties.map(p => p.score));
-        historyBest.textContent = '🏆 Meilleur score : ' + meilleur;
+        historyBest.textContent = jeuActif === 't3a'
+            ? '🏆 Meilleure précision : ' + meilleur + '%'
+            : '🏆 Meilleur score : ' + meilleur;
     } else {
         historyBox.classList.add('hidden');
     }
@@ -410,10 +520,16 @@ btnStart.onclick = () => {
         actualiserDureeNBack();
         gameConfigTitle.textContent = libelleJeuActif();
     }
-    nbTours = parseInt(roundsInput.value, 10);
-    if (isNaN(nbTours) || nbTours < 5) nbTours = 5;
-    if (nbTours > 50) nbTours = 50;
-    roundsInput.value = nbTours;
+    if (jeuActif === 't3a') {
+        actualiserConfigurationT3A();
+        gameConfigTitle.textContent = libelleJeuActif();
+        nbTours = nombreManchesT3A;
+    } else {
+        nbTours = parseInt(roundsInput.value, 10);
+        if (isNaN(nbTours) || nbTours < 5) nbTours = 5;
+        if (nbTours > 50) nbTours = 50;
+        roundsInput.value = nbTours;
+    }
     toursParJeu[jeuActif] = nbTours;
 
     tourActuel = 0;
@@ -422,6 +538,17 @@ btnStart.onclick = () => {
     essaisComptabilisesNBack = 0;
     nonCiblesIgnoreesNBack = 0;
     tempsReactions = [];
+    ciblesT3A = 0;
+    detectionsT3A = 0;
+    ciblesManqueesT3A = 0;
+    ciblesCouleurManqueesT3A = 0;
+    faussesAlertesT3A = 0;
+    decisionsT3A = 0;
+    reactionsT3A = [];
+    formeCibleT3A = 'etoile';
+    couleurCibleT3A = 'ROUGE';
+    formeT3AActuelle = '';
+    t3aLiveScore.textContent = 'Réussites : 0 · Erreurs : 0';
     essaisAxCpt = jeuActif === 'ax-cpt' ? creerEssaisAxCpt(nbTours) : [];
     sequenceNBack = jeuActif === 'nback'
         ? creerSequenceNBack(nbTours, niveauNBack, typeStimulusNBack)
@@ -431,13 +558,30 @@ btnStart.onclick = () => {
 
     screenStart.classList.add('hidden');
     screenGame.classList.remove('hidden');
+    const estT3A = jeuActif === 't3a';
+    screenGame.classList.toggle('t3a-game-active', estT3A);
+    document.body.classList.toggle('t3a-active', estT3A);
+    t3aGame.classList.toggle('hidden', !estT3A);
+    wordDiv.classList.toggle('hidden', estT3A);
+    answersDiv.classList.toggle('hidden', estT3A);
+    feedback.classList.toggle('hidden', estT3A);
 
     playerName.textContent = joueur;
-    prochaineQuestion();
+    if (estT3A) {
+        progressLabel.textContent = 'Manche :';
+        mancheT3AActuelle = 1;
+        demarrerMancheT3A();
+    } else {
+        progressLabel.textContent = 'Question :';
+        prochaineQuestion();
+    }
 };
 
 btnRestart.onclick = () => {
     clearTimeout(timeoutQuestion);
+    arreterHorlogeT3A();
+    document.body.classList.remove('t3a-active');
+    screenGame.classList.remove('t3a-game-active');
     screenEnd.classList.add('hidden');
     screenStart.classList.remove('hidden');
     playerInput.dispatchEvent(new Event('input'));
@@ -445,6 +589,9 @@ btnRestart.onclick = () => {
 
 btnHome.onclick = () => {
     clearTimeout(timeoutQuestion);
+    arreterHorlogeT3A();
+    document.body.classList.remove('t3a-active');
+    screenGame.classList.remove('t3a-game-active');
     screenEnd.classList.add('hidden');
     screenHome.classList.remove('hidden');
     screenFormMode.classList.add('hidden');
@@ -484,6 +631,30 @@ function contenuDesResultats() {
         ].join('\n');
     }
 
+    if (jeuActif === 't3a') {
+        const precision = decisionsT3A
+            ? Math.round((detectionsT3A / decisionsT3A) * 100)
+            : 0;
+        const reactionMoyenne = reactionsT3A.length
+            ? Math.round(reactionsT3A.reduce((total, temps) => total + temps, 0) / reactionsT3A.length)
+            : 0;
+        return [
+            titreResultatsActif(),
+            'Joueur : ' + joueur,
+            'Manches : ' + nombreManchesT3A,
+            'Cibles détectées : ' + detectionsT3A + '/' + ciblesT3A,
+            'Erreurs totales : ' + totalErreursT3A(),
+            'Cibles forme manquées (non comptées comme erreurs) : ' +
+                (ciblesManqueesT3A - ciblesCouleurManqueesT3A),
+            'Cibles couleur ignorées (comptées comme erreurs) : ' +
+                ciblesCouleurManqueesT3A,
+            'Fausses alertes : ' + faussesAlertesT3A,
+            'Précision des clics : ' + detectionsT3A + '/' + decisionsT3A +
+                ' (' + precision + '%)',
+            'Temps moyen de détection : ' + reactionMoyenne + ' ms'
+        ].join('\n');
+    }
+
     const precision = Math.round((score / nbTours) * 100);
     const reactionMoyenne = tempsReactions.length
         ? Math.round(tempsReactions.reduce((total, temps) => total + temps, 0) / tempsReactions.length)
@@ -502,6 +673,9 @@ function contenuDesResultats() {
 
 btnEndStats.onclick = () => {
     clearTimeout(timeoutQuestion);
+    arreterHorlogeT3A();
+    document.body.classList.remove('t3a-active');
+    screenGame.classList.remove('t3a-game-active');
     screenEnd.classList.add('hidden');
     screenStats.classList.remove('hidden');
     statsTitle.textContent = '📊 Statistiques — ' + libelleJeuActif();
@@ -519,6 +693,7 @@ function couleurAleatoire(sauf) {
 }
 
 function prochaineQuestion() {
+    if (jeuActif === 't3a') return;
     if (jeuActif === 'nback') {
         prochaineQuestionNBack();
         return;
@@ -548,6 +723,254 @@ function prochaineQuestion() {
 
     if (jeuActif !== 'ax-cpt') tempsDebutQuestion = performance.now();
 }
+
+function formatTempsT3A(secondes) {
+    const minutes = Math.floor(secondes / 60);
+    const reste = secondes % 60;
+    return minutes + ':' + String(reste).padStart(2, '0');
+}
+
+function telephoneEnPortraitT3A() {
+    return navigator.maxTouchPoints > 0 &&
+        window.matchMedia('(max-width: 900px)').matches &&
+        window.innerHeight > window.innerWidth;
+}
+
+function actualiserAffichageT3A() {
+    const portrait = telephoneEnPortraitT3A();
+    t3aRotateMessage.classList.toggle('hidden', !portrait);
+    t3aBoard.classList.toggle('hidden', portrait || phaseT3A !== 'manche');
+    t3aBreakScreen.classList.toggle('hidden', portrait || phaseT3A !== 'pause');
+}
+
+function choisirCibleDifferenteT3A(options, cibleActuelle, cle) {
+    const autresCibles = options.filter(option => option[cle] !== cibleActuelle);
+    return autresCibles[Math.floor(Math.random() * autresCibles.length)][cle];
+}
+
+function actualiserLibellesCiblesT3A() {
+    const forme = FORMES.find(option => option.id === formeCibleT3A);
+    const couleur = COULEURS.find(option => option.nom === couleurCibleT3A);
+    btnT3aLeft.textContent = forme.nom;
+    btnT3aLeft.setAttribute('aria-label', 'Détecter la forme ' + forme.nom.toLocaleLowerCase('fr-FR'));
+    btnT3aRight.textContent = couleur.nom;
+    btnT3aRight.setAttribute('aria-label', 'Détecter la couleur ' + couleur.nom.toLocaleLowerCase('fr-FR'));
+    gamePrompt.textContent = 'Forme : ' + forme.nom + ' (Espace) · Couleur : ' +
+        couleur.nom + ' (clic uniquement)';
+}
+
+function preparerCiblesMancheT3A() {
+    if (mancheT3AActuelle > 1) {
+        if (changerFormeCibleT3A) {
+            formeCibleT3A = choisirCibleDifferenteT3A(FORMES, formeCibleT3A, 'id');
+        }
+        if (changerCouleurCibleT3A) {
+            couleurCibleT3A = choisirCibleDifferenteT3A(COULEURS, couleurCibleT3A, 'nom');
+        }
+    }
+    actualiserLibellesCiblesT3A();
+}
+
+function creerStimulusT3A(debut) {
+    const formesDisponibles = FORMES.filter(option => option.id !== formeT3AActuelle);
+    const forme = formesDisponibles[Math.floor(Math.random() * formesDisponibles.length)];
+    formeT3AActuelle = forme.id;
+    const couleurCible = COULEURS.find(option => option.nom === couleurCibleT3A);
+    const couleursNonCibles = COULEURS.filter(option => option.nom !== couleurCibleT3A);
+    couleurT3AActuelle = Math.random() < 0.2
+        ? couleurCible
+        : couleursNonCibles[Math.floor(Math.random() * couleursNonCibles.length)];
+    reponseFormeT3A = false;
+    reponseCouleurT3A = false;
+    debutStimulusT3A = debut;
+    t3aResponseFeedback.textContent = '';
+    t3aResponseFeedback.className = '';
+
+    t3aLeftStimulus.innerHTML = '';
+    const icone = document.createElement('span');
+    icone.className = 'shape-icon ' + forme.classe;
+    icone.setAttribute('aria-hidden', 'true');
+    t3aLeftStimulus.appendChild(icone);
+    t3aLeftStimulus.setAttribute(
+        'aria-label',
+        forme.id === formeCibleT3A
+            ? 'Cible forme ' + forme.nom.toLocaleLowerCase('fr-FR')
+            : 'Forme non cible'
+    );
+
+    t3aRightStimulus.textContent = couleurT3AActuelle.nom;
+    t3aRightStimulus.style.backgroundColor = couleurT3AActuelle.css;
+    t3aRightStimulus.style.color = couleurT3AActuelle.nom === 'JAUNE' ? '#333' : '#fff';
+    t3aRightStimulus.setAttribute(
+        'aria-label',
+        'Couleur ' + couleurT3AActuelle.nom.toLocaleLowerCase('fr-FR')
+    );
+}
+
+function demarrerMancheT3A() {
+    if (mancheT3AActuelle > nombreManchesT3A) {
+        finDuJeu();
+        return;
+    }
+
+    phaseT3A = 'manche';
+    tempsEcouleMancheT3A = 0;
+    tempsStimulusT3A = 0;
+    dernierTickT3A = performance.now();
+    progress.textContent = mancheT3AActuelle + '/' + nombreManchesT3A;
+    t3aRoundNumber.textContent = mancheT3AActuelle + '/' + nombreManchesT3A;
+    t3aRoundTime.textContent = formatTempsT3A(dureeMancheT3A);
+    progressLabel.textContent = 'Manche :';
+    preparerCiblesMancheT3A();
+    creerStimulusT3A(dernierTickT3A);
+    actualiserAffichageT3A();
+
+    if (horlogeT3A === null) {
+        horlogeT3A = setInterval(tickT3A, 100);
+    }
+}
+
+function repondreT3A(zone) {
+    if (phaseT3A !== 'manche') return;
+
+    if (zone === 'forme') {
+        const cible = formeT3AActuelle === formeCibleT3A;
+        if (cible && reponseFormeT3A) return;
+        reponseFormeT3A = true;
+        enregistrerReponseT3A(cible);
+        t3aResponseFeedback.textContent = cible
+            ? 'Bonne détection.'
+            : 'Erreur : clic sur une forme non cible.';
+        t3aResponseFeedback.className = cible ? 'good' : 'bad';
+    } else {
+        const cible = couleurT3AActuelle.nom === couleurCibleT3A;
+        if (cible && reponseCouleurT3A) return;
+        reponseCouleurT3A = true;
+        enregistrerReponseT3A(cible);
+        t3aResponseFeedback.textContent = cible
+            ? 'Bonne détection.'
+            : 'Erreur : clic sur une couleur non cible.';
+        t3aResponseFeedback.className = cible ? 'good' : 'bad';
+    }
+}
+
+function enregistrerReponseT3A(cible) {
+    decisionsT3A++;
+    if (cible) {
+        detectionsT3A++;
+        reactionsT3A.push(Math.round(performance.now() - debutStimulusT3A));
+    } else {
+        faussesAlertesT3A++;
+    }
+    t3aLiveScore.textContent = 'Réussites : ' + detectionsT3A +
+        ' · Erreurs : ' + totalErreursT3A();
+}
+
+function evaluerStimulusT3A() {
+    const cibleForme = formeT3AActuelle === formeCibleT3A;
+    const cibleCouleur = couleurT3AActuelle.nom === couleurCibleT3A;
+
+    if (cibleForme) {
+        ciblesT3A++;
+        if (!reponseFormeT3A) ciblesManqueesT3A++;
+    }
+
+    if (cibleCouleur) {
+        ciblesT3A++;
+        if (!reponseCouleurT3A) {
+            ciblesManqueesT3A++;
+            ciblesCouleurManqueesT3A++;
+        }
+    }
+
+    t3aLiveScore.textContent = 'Réussites : ' + detectionsT3A +
+        ' · Erreurs : ' + totalErreursT3A();
+}
+
+function totalErreursT3A() {
+    return faussesAlertesT3A + ciblesCouleurManqueesT3A;
+}
+
+function terminerMancheT3A() {
+    evaluerStimulusT3A();
+    if (mancheT3AActuelle >= nombreManchesT3A) {
+        arreterHorlogeT3A();
+        phaseT3A = 'inactive';
+        finDuJeu();
+        return;
+    }
+
+    phaseT3A = 'pause';
+    tempsEcoulePauseT3A = 0;
+    dernierTickT3A = performance.now();
+    progressLabel.textContent = 'Étape :';
+    progress.textContent = 'Pause';
+    t3aBreakTime.textContent = String(dureePauseT3A);
+    gamePrompt.textContent = 'Pause entre les manches.';
+    actualiserAffichageT3A();
+}
+
+function tickT3A() {
+    if (phaseT3A === 'inactive') return;
+
+    const maintenant = performance.now();
+    actualiserAffichageT3A();
+    if (telephoneEnPortraitT3A()) {
+        dernierTickT3A = maintenant;
+        return;
+    }
+
+    const delta = Math.min(250, Math.max(0, maintenant - dernierTickT3A));
+    dernierTickT3A = maintenant;
+
+    if (phaseT3A === 'manche') {
+        tempsEcouleMancheT3A += delta;
+        tempsStimulusT3A += delta;
+        const restant = Math.max(0, Math.ceil(
+            (dureeMancheT3A * 1000 - tempsEcouleMancheT3A) / 1000
+        ));
+        t3aRoundTime.textContent = formatTempsT3A(restant);
+
+        if (tempsEcouleMancheT3A >= dureeMancheT3A * 1000) {
+            terminerMancheT3A();
+            return;
+        }
+        if (tempsStimulusT3A >= 800) {
+            tempsStimulusT3A -= 800;
+            evaluerStimulusT3A();
+            creerStimulusT3A(maintenant - tempsStimulusT3A);
+        }
+    } else if (phaseT3A === 'pause') {
+        tempsEcoulePauseT3A += delta;
+        const restant = Math.max(0, Math.ceil(
+            (dureePauseT3A * 1000 - tempsEcoulePauseT3A) / 1000
+        ));
+        t3aBreakTime.textContent = String(restant);
+        if (tempsEcoulePauseT3A >= dureePauseT3A * 1000) {
+            mancheT3AActuelle++;
+            demarrerMancheT3A();
+        }
+    }
+}
+
+function arreterHorlogeT3A() {
+    if (horlogeT3A !== null) {
+        clearInterval(horlogeT3A);
+        horlogeT3A = null;
+    }
+    phaseT3A = 'inactive';
+}
+
+btnT3aLeft.onclick = () => repondreT3A('forme');
+btnT3aRight.onclick = () => repondreT3A('couleur');
+document.addEventListener('keydown', event => {
+    if (jeuActif !== 't3a' || phaseT3A !== 'manche') return;
+    if (event.code === 'Space') {
+        if (event.repeat) return;
+        event.preventDefault();
+        repondreT3A('forme');
+    }
+});
 
 function prochaineQuestionStroop() {
     const motAffiche = couleurAleatoire(null);
@@ -844,37 +1267,60 @@ function verifierReponse(choix, bonneReponse) {
 
 // ============ FIN DU JEU ============
 function finDuJeu() {
+    arreterHorlogeT3A();
+    document.body.classList.remove('t3a-active');
+    screenGame.classList.remove('t3a-game-active');
     screenGame.classList.add('hidden');
     screenEnd.classList.remove('hidden');
 
     const estNBack = jeuActif === 'nback';
+    const estT3A = jeuActif === 't3a';
     const echecs = estNBack ? echecsNBack : nbTours - score;
     const essaisEval = estNBack ? essaisComptabilisesNBack : nbTours;
-    const precision = essaisEval ? Math.round((score / essaisEval) * 100) : 0;
+    const precision = estT3A
+        ? decisionsT3A
+            ? Math.round((detectionsT3A / decisionsT3A) * 100)
+            : 0
+        : essaisEval
+            ? Math.round((score / essaisEval) * 100)
+            : 0;
     const tauxEchec = estNBack
         ? essaisComptabilisesNBack
             ? Math.round((echecsNBack / essaisComptabilisesNBack) * 100)
             : 0
         : 100 - precision;
-    const moyenne = !estNBack && tempsReactions.length
-        ? Math.round(tempsReactions.reduce((a, b) => a + b, 0) / tempsReactions.length)
+    const reactionsPourResultat = estT3A ? reactionsT3A : tempsReactions;
+    const moyenne = !estNBack && reactionsPourResultat.length
+        ? Math.round(reactionsPourResultat.reduce((a, b) => a + b, 0) / reactionsPourResultat.length)
         : null;
     const tendanceReaction = estNBack
         ? 'indisponible'
-        : calculerTendanceReaction(tempsReactions);
+        : calculerTendanceReaction(reactionsPourResultat);
+    if (estT3A) score = precision;
 
     resultPlayer.textContent = '👤 ' + joueur;
     resultGame.textContent = '🎮 ' + libelleJeuActif();
-    resultScore.textContent = estNBack
-        ? '🎯 Réussites : ' + score + '/' + essaisEval
-        : '🎯 Score : ' + score + '/' + nbTours;
-    resultAccuracy.textContent = estNBack
-        ? '📊 Taux de réussite : ' + precision + '%'
-        : '📊 Précision : ' + precision + '%';
-    resultFailure.classList.toggle('hidden', !estNBack);
-    resultFailure.textContent = estNBack
-        ? '📉 Échecs : ' + echecs + '/' + essaisEval + ' — Taux d’échec : ' + tauxEchec + '%'
-        : '';
+    resultScore.textContent = estT3A
+        ? '🎯 Cibles détectées : ' + detectionsT3A + '/' + ciblesT3A
+        : estNBack
+            ? '🎯 Réussites : ' + score + '/' + essaisEval
+            : '🎯 Score : ' + score + '/' + nbTours;
+    resultAccuracy.textContent = estT3A
+        ? '📊 Précision des clics : ' + precision + '% (' + detectionsT3A +
+            '/' + decisionsT3A + ' clics sur cible)'
+        : estNBack
+            ? '📊 Taux de réussite : ' + precision + '%'
+            : '📊 Précision : ' + precision + '%';
+    resultFailure.classList.toggle('hidden', !estNBack && !estT3A);
+    resultFailure.textContent = estT3A
+        ? '⚠ Erreurs totales : ' + totalErreursT3A() +
+            ' — Clics hors cible : ' + faussesAlertesT3A +
+            ' — Cibles couleur ignorées : ' + ciblesCouleurManqueesT3A +
+            ' — Formes cibles manquées, non comptées comme erreurs : ' +
+            (ciblesManqueesT3A - ciblesCouleurManqueesT3A)
+        : estNBack
+            ? '📉 Échecs : ' + echecs + '/' + essaisEval + ' — Taux d’échec : ' + tauxEchec + '%'
+            : '';
     resultNeutral.classList.toggle('hidden', !estNBack);
     resultNeutral.textContent = estNBack
         ? '➖ Non-cibles ignorées : ' + nonCiblesIgnoreesNBack + ' (non comptabilisées)'
@@ -882,7 +1328,10 @@ function finDuJeu() {
     resultReaction.classList.toggle('hidden', estNBack);
     resultReaction.textContent = estNBack
         ? ''
-        : '⚡ Temps de réaction moyen : ' + moyenne + ' ms';
+        : estT3A
+            ? '⚡ Temps moyen de détection : ' +
+                (moyenne === null ? '—' : moyenne + ' ms')
+            : '⚡ Temps de réaction moyen : ' + moyenne + ' ms';
     resultTrend.classList.toggle('hidden', estNBack);
     resultTrend.textContent = estNBack
         ? ''
@@ -922,6 +1371,22 @@ function finDuJeu() {
         partie.tauxEchec = tauxEchec;
         partie.nonCiblesIgnorees = nonCiblesIgnoreesNBack;
         partie.versionScoringNBack = 2;
+    }
+    if (estT3A) {
+        partie.nombreManches = nombreManchesT3A;
+        partie.dureeManche = dureeMancheT3A;
+        partie.dureePause = dureePauseT3A;
+        partie.cibles = ciblesT3A;
+        partie.detections = detectionsT3A;
+        partie.ciblesManquees = ciblesManqueesT3A;
+        partie.ciblesCouleurManquees = ciblesCouleurManqueesT3A;
+        partie.ciblesFormeManquees = ciblesManqueesT3A - ciblesCouleurManqueesT3A;
+        partie.faussesAlertes = faussesAlertesT3A;
+        partie.erreurs = totalErreursT3A();
+        partie.decisions = decisionsT3A;
+        partie.changementFormeCible = changerFormeCibleT3A;
+        partie.changementCouleurCible = changerCouleurCibleT3A;
+        partie.versionScoringT3A = 3;
     }
     sauvegarderPartie(partie);
 }
@@ -965,6 +1430,7 @@ btnExportCsv.addEventListener('click', () => {
     const nom = statsPlayerInput.value.trim();
     const filtreTours = statsRoundFilter.value;
     const estNBack = jeuActif === 'nback';
+    const estT3A = jeuActif === 't3a';
     const parties = partiesDe(nom).filter(partie =>
         filtreTours === '' || Number(partie.tours) === Number(filtreTours)
     );
@@ -987,6 +1453,29 @@ btnExportCsv.addEventListener('click', () => {
                     partie.nonCiblesIgnorees
             ])
         ]
+        : estT3A
+            ? [
+                    ['Joueur', 'Jeu', 'Date', 'Manches', 'Durée par manche (s)', 'Pause (s)', 'Cibles détectées', 'Cibles', 'Formes cibles manquées', 'Cibles couleur ignorées', 'Fausses alertes', 'Erreurs totales', 'Clics évalués', 'Changement de forme cible', 'Changement de couleur cible', 'Précision des clics (%)', 'Réaction moyenne (ms)'],
+                ...parties.map(partie => [
+                    nom,
+                    JEUX[jeuActif].nom,
+                    partie.date,
+                    partie.nombreManches,
+                    partie.dureeManche,
+                    partie.dureePause,
+                    partie.detections,
+                    partie.cibles,
+                    partie.versionScoringT3A >= 3 ? partie.ciblesFormeManquees : '',
+                    partie.versionScoringT3A >= 3 ? partie.ciblesCouleurManquees : '',
+                    partie.faussesAlertes,
+                    partie.versionScoringT3A >= 3 ? partie.erreurs : '',
+                    partie.decisions,
+                    partie.changementFormeCible == null ? '' : partie.changementFormeCible ? 'Oui' : 'Non',
+                    partie.changementCouleurCible == null ? '' : partie.changementCouleurCible ? 'Oui' : 'Non',
+                    partie.precision,
+                    partie.reactionMoyenne
+                ])
+            ]
         : [
             ['Joueur', 'Jeu', 'Version', 'Date', 'Score', 'Nombre de tours', 'Précision (%)', 'Réaction moyenne (ms)', 'Tendance réaction'],
             ...parties.map(partie => [
@@ -1012,12 +1501,13 @@ btnExportCsv.addEventListener('click', () => {
     const lien = document.createElement('a');
     const nomFichier = nom.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_') || 'joueur';
     const suffixeMode = jeuActif === 'formes' ? '-mode-' + modeFormes : '';
+    const suffixeT3A = estT3A ? '-t3a' : '';
     const suffixeNBack = jeuActif === 'nback'
         ? '-n' + niveauNBack + '-' + typeStimulusNBack + '-' +
             String(dureeNBack).replace('.', '_') + 's'
         : '';
     lien.href = url;
-    lien.download = 'parties-' + jeuActif + suffixeMode + suffixeNBack + '-' + nomFichier + '-' +
+    lien.download = 'parties-' + jeuActif + suffixeMode + suffixeT3A + suffixeNBack + '-' + nomFichier + '-' +
         new Date().toISOString().slice(0, 10) + '.csv';
     document.body.appendChild(lien);
     lien.click();
@@ -1027,18 +1517,27 @@ btnExportCsv.addEventListener('click', () => {
 
 function afficherStats(nom, reinitialiserFiltre) {
     const estNBack = jeuActif === 'nback';
+    const estT3A = jeuActif === 't3a';
+    statBestLabel.textContent = estT3A ? 'meilleure précision' : 'meilleur score';
     statAvgAccuracyLabel.textContent = estNBack
         ? 'taux de réussite moyen (essais évalués)'
-        : 'précision moyenne';
+        : estT3A ? 'précision moyenne des clics' : 'précision moyenne';
     statAvgReactionLabel.textContent = estNBack
         ? 'taux d’échec moyen (essais évalués)'
-        : 'réaction moyenne';
+        : estT3A ? 'temps moyen de détection' : 'réaction moyenne';
     statLatestTrendLabel.textContent = estNBack
         ? 'taux d’échec de la dernière partie'
-        : 'tendance de la dernière partie';
-    statsPrecisionHeader.textContent = estNBack ? 'Taux de réussite (évalués)' : 'Précision';
+        : estT3A ? 'erreurs de la dernière partie' : 'tendance de la dernière partie';
+    statsRoundFilterLabel.textContent = estT3A
+        ? 'Filtrer par nombre de manches :'
+        : 'Filtrer par nombre de tours :';
+    statsPrecisionHeader.textContent = estNBack
+        ? 'Taux de réussite (évalués)'
+        : estT3A ? 'Précision des clics' : 'Précision';
     statsReactionHeader.textContent = estNBack ? 'Taux d’échec (évalués)' : 'Réaction';
-    statsTrendHeader.textContent = estNBack ? 'Non-cibles ignorées' : 'Tendance';
+    statsTrendHeader.textContent = estNBack
+        ? 'Non-cibles ignorées'
+        : estT3A ? 'Erreurs' : 'Tendance';
 
     const toutesLesParties = partiesDe(nom);
 
@@ -1057,11 +1556,15 @@ function afficherStats(nom, reinitialiserFiltre) {
         toutesOption.textContent = 'Toutes les parties';
         statsRoundFilter.appendChild(toutesOption);
 
-        const nombresDeTours = Array.from({ length: 10 }, (_, index) => (index + 1) * 5);
+        const nombresDeTours = estT3A
+            ? Array.from({ length: 10 }, (_, index) => index + 1)
+            : Array.from({ length: 10 }, (_, index) => (index + 1) * 5);
         nombresDeTours.forEach(tours => {
             const option = document.createElement('option');
             option.value = String(tours);
-            option.textContent = tours + ' tours';
+            option.textContent = tours + (estT3A
+                ? tours === 1 ? ' manche' : ' manches'
+                : ' tours');
             statsRoundFilter.appendChild(option);
         });
         statsRoundFilter.value = '';
@@ -1080,7 +1583,10 @@ function afficherStats(nom, reinitialiserFiltre) {
         statAvgReaction.textContent = '—';
         statLatestTrend.textContent = '—';
         statsTableBody.innerHTML = '';
-        statsEmpty.textContent = 'Aucune partie trouvée avec ' + nombreDeToursFiltre + ' tours.';
+        statsEmpty.textContent = 'Aucune partie trouvée avec ' + nombreDeToursFiltre +
+            (estT3A
+                ? Number(nombreDeToursFiltre) === 1 ? ' manche.' : ' manches.'
+                : ' tours.');
         statsEmpty.classList.remove('hidden');
         return;
     }
@@ -1093,7 +1599,7 @@ function afficherStats(nom, reinitialiserFiltre) {
     statTotal.textContent = parties.length;
 
     const meilleur = Math.max(...parties.map(p => p.score));
-    statBest.textContent = meilleur;
+    statBest.textContent = estT3A ? meilleur + '%' : meilleur;
 
     const precMoyenne = Math.round(
         parties.reduce((a, p) => a + p.precision, 0) / parties.length
@@ -1107,13 +1613,24 @@ function afficherStats(nom, reinitialiserFiltre) {
         statAvgReaction.textContent = echecsMoyens + '%';
         statLatestTrend.textContent = parties[parties.length - 1].tauxEchec + '%';
     } else {
-        const reacMoyenne = Math.round(
-            parties.reduce((a, p) => a + p.reactionMoyenne, 0) / parties.length
-        );
-        statAvgReaction.textContent = reacMoyenne + ' ms';
-        statLatestTrend.textContent = libelleTendanceReaction(
-            parties[parties.length - 1].tendanceReaction
-        );
+        const reactions = parties
+            .map(partie => partie.reactionMoyenne)
+            .filter(Number.isFinite);
+        const reacMoyenne = reactions.length
+            ? Math.round(reactions.reduce((total, reaction) => total + reaction, 0) / reactions.length)
+            : null;
+        statAvgReaction.textContent = reacMoyenne === null ? '—' : reacMoyenne + ' ms';
+        if (estT3A) {
+            const dernierePartie = parties[parties.length - 1];
+            statLatestTrend.textContent = dernierePartie.versionScoringT3A >= 3 &&
+                Number.isFinite(dernierePartie.erreurs)
+                ? String(dernierePartie.erreurs)
+                : '—';
+        } else {
+            statLatestTrend.textContent = libelleTendanceReaction(
+                parties[parties.length - 1].tendanceReaction
+            );
+        }
     }
 
     // ---- Tableau détaillé (plus récentes en premier) ----
@@ -1127,17 +1644,26 @@ function afficherStats(nom, reinitialiserFiltre) {
         const tdDate = document.createElement('td');
         tdDate.textContent = p.date;
         const tdScore = document.createElement('td');
-        tdScore.textContent = estNBack
-            ? p.score + '/' + p.essaisComptabilises
-            : p.score + '/' + p.tours;
+        tdScore.textContent = estT3A
+            ? p.detections + '/' + p.cibles + ' détectées · ' +
+                (p.ciblesManquees == null ? '—' : p.ciblesManquees) + ' manquées'
+            : estNBack
+                ? p.score + '/' + p.essaisComptabilises
+                : p.score + '/' + p.tours;
         const tdPrecision = document.createElement('td');
         tdPrecision.textContent = p.precision + '%';
         const tdReaction = document.createElement('td');
-        tdReaction.textContent = estNBack ? p.tauxEchec + '%' : p.reactionMoyenne + ' ms';
+        tdReaction.textContent = estNBack
+            ? p.tauxEchec + '%'
+            : p.reactionMoyenne == null ? '—' : p.reactionMoyenne + ' ms';
         const tdTrend = document.createElement('td');
         tdTrend.textContent = estNBack
             ? p.nonCiblesIgnorees
-            : libelleTendanceReaction(p.tendanceReaction);
+            : estT3A
+                ? p.versionScoringT3A >= 3 && Number.isFinite(p.erreurs)
+                    ? p.erreurs
+                    : '—'
+                : libelleTendanceReaction(p.tendanceReaction);
 
         tr.appendChild(tdDate);
         tr.appendChild(tdScore);
