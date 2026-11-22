@@ -52,6 +52,12 @@ const JEUX = {
         titreResultats: 'Résultats de la Double Tâche',
         instructions: 'Surveillez les deux zones en même temps. Pour les formes, une forme non-cible fixe est affichée; toutes les 15 secondes, une forme aléatoire la remplace pendant 3 secondes, puis la forme fixe revient. Espace sur une cible ou absence d’Espace sur une non-cible = réussite; Espace sur une non-cible ou absence d’Espace sur une cible = erreur. Pour les couleurs : clic sur la cible = réussite; clic sur une non-cible = erreur; cible ignorée = erreur; non-cible ignorée = non comptabilisée. Les résultats des deux tâches sont séparés.',
         prompt: 'Espace pour la forme cible · Clic pour la couleur cible.'
+    },
+    'test-t3a': {
+        nom: 'Test T3A',
+        titreResultats: 'Résultats du Test T3A',
+        instructions: 'Chaque séquence dure 1 min 30. Au palier 1, appuyez sur 9 si le stimulus est identique à celui du N-Back demandé, sinon sur 0. Au palier 2, surveillez aussi le carré : A pour rouge, Z pour jaune. Au palier 3, exécutez aussi chaque consigne centrale avec la touche indiquée. Chaque tâche est évaluée séparément; une touche incorrecte ou l’absence de réponse est une erreur.',
+        prompt: 'Répondez avec les touches 9, 0, A, Z et 1, 2, 3 selon les tâches affichées.'
     }
 };
 
@@ -91,13 +97,32 @@ const screenStats = document.getElementById('screen-stats');
 const gameConfigTitle = document.getElementById('game-config-title');
 const gameInstructions = document.getElementById('game-instructions');
 const gamePrompt = document.getElementById('game-prompt');
-const gameCards = document.querySelectorAll('.game-card[data-game]');
+const gameCards = document.querySelectorAll('#screen-home .game-card[data-game], #screen-multitache .game-card[data-game]');
+const menuCards = document.querySelectorAll('.game-card[data-menu]');
+const screenMultitache = document.getElementById('screen-multitache');
+const btnMultitacheBack = document.getElementById('btn-multitache-back');
 const formModeCards = document.querySelectorAll('[data-form-mode]');
 const nbackOptions = document.getElementById('nback-options');
 const nbackLevelInput = document.getElementById('nback-level');
 const nbackTypeInput = document.getElementById('nback-type');
 const nbackDurationInput = document.getElementById('nback-duration');
 const t3aOptions = document.getElementById('t3a-options');
+const testT3aOptions = document.getElementById('test-t3a-options');
+const testT3aCombinationInput = document.getElementById('test-t3a-combination');
+const testT3aNbackLevelInput = document.getElementById('test-t3a-nback-level');
+const testT3aNbackDurationInput = document.getElementById('test-t3a-nback-duration');
+const testT3aDurationInputs = [
+    null,
+    testT3aNbackDurationInput,
+    document.getElementById('test-t3a-duration-2'),
+    document.getElementById('test-t3a-duration-3')
+];
+const testT3aCountInputs = [
+    null,
+    document.getElementById('test-t3a-count-1'),
+    document.getElementById('test-t3a-count-2'),
+    document.getElementById('test-t3a-count-3')
+];
 const t3aRoundsInput = document.getElementById('t3a-rounds');
 const t3aRoundDurationInput = document.getElementById('t3a-round-duration');
 const t3aBreakDurationInput = document.getElementById('t3a-break-duration');
@@ -124,6 +149,16 @@ const wordDiv = document.getElementById('word');
 const answersDiv = document.getElementById('answers');
 const feedback = document.getElementById('feedback');
 const t3aGame = document.getElementById('t3a-game');
+const testT3aGame = document.getElementById('test-t3a-game');
+const testT3aSequenceLabel = document.getElementById('test-t3a-sequence');
+const testT3aTimeLabel = document.getElementById('test-t3a-time');
+const testT3aLiveScore = document.getElementById('test-t3a-live-score');
+const testT3aNbackPanel = document.getElementById('test-t3a-nback-panel');
+const testT3aNbackStimulus = document.getElementById('test-t3a-nback-stimulus');
+const testT3aCommand = document.getElementById('test-t3a-command');
+const testT3aColorPanel = document.getElementById('test-t3a-color-panel');
+const testT3aColorStimulus = document.getElementById('test-t3a-color-stimulus');
+const testT3aResultDetail = document.getElementById('test-t3a-result-detail');
 const t3aBoard = document.getElementById('t3a-board');
 const t3aLeftStimulus = document.getElementById('t3a-left-stimulus');
 const t3aRightStimulus = document.getElementById('t3a-right-stimulus');
@@ -233,6 +268,27 @@ let faussesAlertesCouleurT3A = 0;
 let decisionsFormeT3A = 0;
 let decisionsCouleurT3A = 0;
 let reactionsT3A = [];
+const DUREE_SEQUENCE_TEST_T3A = 90;
+let paliersTestT3A = [1, 2, 3];
+let nombreSequencesTestT3A = { 1: 1, 2: 4, 3: 4 };
+let dureesStimuliTestT3A = { 1: 3, 2: 3, 3: 3 };
+let niveauNBackTestT3A = 2;
+let sequencesTestT3A = [];
+let indexSequenceTestT3A = 0;
+let horlogeTestT3A = null;
+let dernierTickTestT3A = 0;
+let tempsEcouleSequenceTestT3A = 0;
+let tempsFenetreTestT3A = 0;
+let dureeStimulusTestT3A = 0;
+let historiqueNBackTestT3A = [];
+let stimulusNBackTestT3A = '';
+let cibleNBackTestT3A = false;
+let reponseNBackTestT3A = false;
+let couleurTestT3A = '';
+let reponseCouleurTestT3A = false;
+let commandeTestT3A = '';
+let reponseCommandeTestT3A = false;
+let scoresTestT3A = null;
 let questionVerrouillee = false;
 let timeoutQuestion = null;
 const toursParJeu = {
@@ -241,7 +297,8 @@ const toursParJeu = {
     flanker: 10,
     'ax-cpt': 10,
     nback: 10,
-    t3a: 4
+    t3a: 4,
+    'test-t3a': 9
 };
 
 roundsInput.addEventListener('input', () => {
@@ -311,6 +368,38 @@ function actualiserConfigurationT3A() {
     changerCouleurCibleT3A = t3aChangeColorInput.checked;
 }
 
+function actualiserConfigurationTestT3A() {
+    paliersTestT3A = testT3aCombinationInput.value.split('-').map(Number);
+    niveauNBackTestT3A = Math.min(4, Math.max(1, Number(testT3aNbackLevelInput.value) || 2));
+    testT3aNbackLevelInput.value = String(niveauNBackTestT3A);
+
+    for (let palier = 1; palier <= 3; palier++) {
+        const duree = Number(testT3aDurationInputs[palier].value);
+        const nombreSequences = Number(testT3aCountInputs[palier].value);
+        dureesStimuliTestT3A[palier] = Number.isFinite(duree)
+            ? Math.min(10, Math.max(2, duree))
+            : 3;
+        nombreSequencesTestT3A[palier] = Number.isFinite(nombreSequences)
+            ? Math.min(10, Math.max(1, Math.floor(nombreSequences)))
+            : [0, 1, 4, 4][palier];
+        testT3aDurationInputs[palier].value = String(dureesStimuliTestT3A[palier]);
+        testT3aCountInputs[palier].value = String(nombreSequencesTestT3A[palier]);
+        testT3aCountInputs[palier].disabled = !paliersTestT3A.includes(palier);
+    }
+
+    nbTours = paliersTestT3A.reduce(
+        (total, palier) => total + nombreSequencesTestT3A[palier],
+        0
+    );
+    toursParJeu['test-t3a'] = nbTours;
+}
+
+function creerPlanSequencesTestT3A() {
+    return paliersTestT3A.flatMap(palier =>
+        Array(nombreSequencesTestT3A[palier]).fill(palier)
+    );
+}
+
 function libelleJeuActif() {
     if (jeuActif === 'formes') {
         return JEUX.formes.nom + ' — ' + MODES_FORMES[modeFormes].nom;
@@ -323,6 +412,11 @@ function libelleJeuActif() {
         return JEUX.t3a.nom + ' — ' + nombreManchesT3A +
             (nombreManchesT3A === 1 ? ' manche de ' : ' manches de ') +
             dureeMancheT3A + ' s, pause ' + dureePauseT3A + ' s';
+    }
+    if (jeuActif === 'test-t3a') {
+        return JEUX['test-t3a'].nom + ' — ' + nbTours +
+            (nbTours === 1 ? ' séquence de ' : ' séquences de ') +
+            DUREE_SEQUENCE_TEST_T3A + ' s';
     }
     return JEUX[jeuActif].nom;
 }
@@ -339,6 +433,10 @@ function titreResultatsActif() {
         return JEUX.t3a.titreResultats + ' — ' + nombreManchesT3A +
             (nombreManchesT3A === 1 ? ' manche de ' : ' manches de ') +
             dureeMancheT3A + ' s';
+    }
+    if (jeuActif === 'test-t3a') {
+        return JEUX['test-t3a'].titreResultats + ' — ' + nbTours +
+            (nbTours === 1 ? ' séquence' : ' séquences');
     }
     return JEUX[jeuActif].titreResultats;
 }
@@ -358,23 +456,39 @@ function afficherConfigurationJeu() {
         : configuration.prompt;
     nbackOptions.hidden = jeuActif !== 'nback';
     t3aOptions.hidden = jeuActif !== 't3a';
-    roundsConfig.hidden = jeuActif === 't3a';
+    testT3aOptions.hidden = jeuActif !== 'test-t3a';
+    roundsConfig.hidden = jeuActif === 't3a' || jeuActif === 'test-t3a';
     if (jeuActif === 't3a') {
         gameInstructions.textContent += ' Les options cochées font varier les cibles entre les manches.';
     }
-    if (jeuActif !== 't3a') roundsInput.value = toursParJeu[jeuActif];
+    if (jeuActif === 'test-t3a') {
+        actualiserConfigurationTestT3A();
+        gameConfigTitle.textContent = libelleJeuActif();
+    }
+    if (jeuActif !== 't3a' && jeuActif !== 'test-t3a') roundsInput.value = toursParJeu[jeuActif];
     btnBackGames.textContent = jeuActif === 'formes'
         ? '← Choisir la version'
-        : '← Choisir un jeu';
+        : jeuActif === 't3a' || jeuActif === 'test-t3a'
+            ? '← Multitâche'
+            : '← Choisir un jeu';
     document.title = libelleJeuActif();
     screenStart.classList.remove('hidden');
     playerInput.dispatchEvent(new Event('input'));
 }
 
+menuCards.forEach(card => {
+    card.onclick = () => {
+        screenHome.classList.add('hidden');
+        screenMultitache.classList.remove('hidden');
+        document.title = 'Multitâche';
+    };
+});
+
 gameCards.forEach(card => {
     card.onclick = () => {
         jeuActif = card.dataset.game;
         screenHome.classList.add('hidden');
+        screenMultitache.classList.add('hidden');
         if (jeuActif === 'formes') {
             screenFormMode.classList.remove('hidden');
             document.title = JEUX.formes.nom;
@@ -383,6 +497,12 @@ gameCards.forEach(card => {
         afficherConfigurationJeu();
     };
 });
+
+btnMultitacheBack.onclick = () => {
+    screenMultitache.classList.add('hidden');
+    screenHome.classList.remove('hidden');
+    document.title = 'Entraînement cognitif';
+};
 
 formModeCards.forEach(card => {
     card.onclick = () => {
@@ -423,9 +543,18 @@ nbackDurationInput.addEventListener('change', () => {
     });
 });
 
+[testT3aCombinationInput, testT3aNbackLevelInput, ...testT3aDurationInputs.slice(1),
+    ...testT3aCountInputs.slice(1)].forEach(input => {
+    input.addEventListener('change', () => {
+        actualiserConfigurationTestT3A();
+        if (jeuActif === 'test-t3a') afficherConfigurationJeu();
+    });
+});
+
 btnModeBack.onclick = () => {
     screenFormMode.classList.add('hidden');
     screenHome.classList.remove('hidden');
+    screenMultitache.classList.add('hidden');
     document.title = 'Entraînement cognitif';
 };
 
@@ -434,6 +563,9 @@ btnBackGames.onclick = () => {
     if (jeuActif === 'formes') {
         screenFormMode.classList.remove('hidden');
         document.title = JEUX.formes.nom;
+    } else if (jeuActif === 't3a' || jeuActif === 'test-t3a') {
+        screenMultitache.classList.remove('hidden');
+        document.title = 'Multitâche';
     } else {
         screenHome.classList.remove('hidden');
         document.title = 'Entraînement cognitif';
@@ -503,7 +635,9 @@ playerInput.addEventListener('input', () => {
         // 5 dernières parties (plus récentes en premier)
         [...parties].reverse().slice(0, 5).forEach(p => {
             const li = document.createElement('li');
-            const scorePartie = jeuActif === 'nback'
+            const scorePartie = jeuActif === 'test-t3a'
+                ? p.precision + '%'
+                : jeuActif === 'nback'
                 ? p.score + '/' + p.essaisComptabilises
                 : jeuActif === 't3a'
                     ? p.versionScoringT3A >= 4
@@ -511,7 +645,9 @@ playerInput.addEventListener('input', () => {
                             ' · Couleurs ' + p.reussitesCouleur + '/' + p.erreursCouleur
                         : p.detections + '/' + p.cibles + ' cibles'
                     : p.score + '/' + p.tours;
-            const details = jeuActif === 'nback'
+            const details = jeuActif === 'test-t3a'
+                ? ' (' + p.tours + ' séquences)'
+                : jeuActif === 'nback'
                 ? ' (' + p.tauxEchec + '% échec, ' + p.nonCiblesIgnorees + ' non-cibles ignorées)'
                 : jeuActif === 't3a' && p.versionScoringT3A >= 4
                     ? ' (précision F ' + (p.precisionForme == null ? '—' : p.precisionForme + '%') +
@@ -524,7 +660,7 @@ playerInput.addEventListener('input', () => {
         });
 
         const meilleur = Math.max(...parties.map(p => p.score));
-        historyBest.textContent = jeuActif === 't3a'
+        historyBest.textContent = jeuActif === 't3a' || jeuActif === 'test-t3a'
             ? '🏆 Meilleure précision : ' + meilleur + '%'
             : '🏆 Meilleur score : ' + meilleur;
     } else {
@@ -550,6 +686,13 @@ btnStart.onclick = () => {
         actualiserConfigurationT3A();
         gameConfigTitle.textContent = libelleJeuActif();
         nbTours = nombreManchesT3A;
+    } else if (jeuActif === 'test-t3a') {
+        actualiserConfigurationTestT3A();
+        gameConfigTitle.textContent = libelleJeuActif();
+        nbTours = paliersTestT3A.reduce(
+            (total, palier) => total + nombreSequencesTestT3A[palier],
+            0
+        );
     } else {
         nbTours = parseInt(roundsInput.value, 10);
         if (isNaN(nbTours) || nbTours < 5) nbTours = 5;
@@ -596,18 +739,25 @@ btnStart.onclick = () => {
     screenStart.classList.add('hidden');
     screenGame.classList.remove('hidden');
     const estT3A = jeuActif === 't3a';
+    const estTestT3A = jeuActif === 'test-t3a';
     screenGame.classList.toggle('t3a-game-active', estT3A);
+    screenGame.classList.toggle('test-t3a-game-active', estTestT3A);
     document.body.classList.toggle('t3a-active', estT3A);
+    document.body.classList.toggle('test-t3a-active', estTestT3A);
     t3aGame.classList.toggle('hidden', !estT3A);
-    wordDiv.classList.toggle('hidden', estT3A);
-    answersDiv.classList.toggle('hidden', estT3A);
-    feedback.classList.toggle('hidden', estT3A);
+    testT3aGame.classList.toggle('hidden', !estTestT3A);
+    wordDiv.classList.toggle('hidden', estT3A || estTestT3A);
+    answersDiv.classList.toggle('hidden', estT3A || estTestT3A);
+    feedback.classList.toggle('hidden', estT3A || estTestT3A);
 
     playerName.textContent = joueur;
     if (estT3A) {
         progressLabel.textContent = 'Manche :';
         mancheT3AActuelle = 1;
         demarrerMancheT3A();
+    } else if (estTestT3A) {
+        progressLabel.textContent = 'Séquence :';
+        demarrerTestT3A();
     } else {
         progressLabel.textContent = 'Question :';
         prochaineQuestion();
@@ -617,8 +767,11 @@ btnStart.onclick = () => {
 btnRestart.onclick = () => {
     clearTimeout(timeoutQuestion);
     arreterHorlogeT3A();
+    arreterHorlogeTestT3A();
     document.body.classList.remove('t3a-active');
+    document.body.classList.remove('test-t3a-active');
     screenGame.classList.remove('t3a-game-active');
+    screenGame.classList.remove('test-t3a-game-active');
     screenEnd.classList.add('hidden');
     screenStart.classList.remove('hidden');
     playerInput.dispatchEvent(new Event('input'));
@@ -627,10 +780,14 @@ btnRestart.onclick = () => {
 btnHome.onclick = () => {
     clearTimeout(timeoutQuestion);
     arreterHorlogeT3A();
+    arreterHorlogeTestT3A();
     document.body.classList.remove('t3a-active');
+    document.body.classList.remove('test-t3a-active');
     screenGame.classList.remove('t3a-game-active');
+    screenGame.classList.remove('test-t3a-game-active');
     screenEnd.classList.add('hidden');
     screenHome.classList.remove('hidden');
+    screenMultitache.classList.add('hidden');
     screenFormMode.classList.add('hidden');
     screenStart.classList.add('hidden');
     historyBox.classList.add('hidden');
@@ -652,6 +809,16 @@ btnSmsResults.onclick = () => {
 };
 
 function contenuDesResultats() {
+    if (jeuActif === 'test-t3a') {
+        return [
+            titreResultatsActif(),
+            'Joueur : ' + joueur,
+            'Séquences : ' + nbTours + ' de ' + DUREE_SEQUENCE_TEST_T3A + ' s',
+            'Précision globale : ' + calculerPrecisionTestT3A() + '%',
+            texteResultatsTestT3A()
+        ].join('\n\n');
+    }
+
     if (jeuActif === 'nback') {
         const precision = Math.round((score / essaisComptabilisesNBack) * 100);
         return [
@@ -708,8 +875,11 @@ function contenuDesResultats() {
 btnEndStats.onclick = () => {
     clearTimeout(timeoutQuestion);
     arreterHorlogeT3A();
+    arreterHorlogeTestT3A();
     document.body.classList.remove('t3a-active');
+    document.body.classList.remove('test-t3a-active');
     screenGame.classList.remove('t3a-game-active');
+    screenGame.classList.remove('test-t3a-game-active');
     screenEnd.classList.add('hidden');
     screenStats.classList.remove('hidden');
     statsTitle.textContent = '📊 Statistiques — ' + libelleJeuActif();
@@ -1092,6 +1262,275 @@ document.addEventListener('keydown', event => {
     }
 });
 
+function creerCompteurTestT3A() {
+    return { reussites: 0, erreurs: 0, historique: [] };
+}
+
+function initialiserScoresTestT3A() {
+    scoresTestT3A = {};
+    for (let palier = 1; palier <= 3; palier++) {
+        scoresTestT3A[palier] = {
+            nback: creerCompteurTestT3A(),
+            carre: creerCompteurTestT3A(),
+            consigne: creerCompteurTestT3A()
+        };
+    }
+}
+
+function enregistrerEssaiTestT3A(tache, reussi) {
+    const compteur = scoresTestT3A[sequencesTestT3A[indexSequenceTestT3A]][tache];
+    if (reussi) compteur.reussites++;
+    else compteur.erreurs++;
+    compteur.historique.push(reussi ? 1 : 0);
+    actualiserScoreTestT3A();
+}
+
+function comptePalierTestT3A(palier) {
+    return scoresTestT3A[palier];
+}
+
+function tendanceCompteurTestT3A(compteur) {
+    const historique = compteur.historique;
+    if (historique.length < 2) return 'insuffisamment de réponses';
+    const milieu = Math.floor(historique.length / 2);
+    const debut = historique.slice(0, milieu);
+    const fin = historique.slice(milieu);
+    const precisionDebut = debut.reduce((total, valeur) => total + valeur, 0) / debut.length;
+    const precisionFin = fin.reduce((total, valeur) => total + valeur, 0) / fin.length;
+    const ecart = precisionFin - precisionDebut;
+    if (ecart >= 0.05) return 'en amélioration';
+    if (ecart <= -0.05) return 'en baisse';
+    return 'stable';
+}
+
+function texteCompteurTestT3A(nom, compteur) {
+    return nom + ' : ' + compteur.reussites +
+        (compteur.reussites === 1 ? ' réussite' : ' réussites') + ' / ' +
+        compteur.erreurs + (compteur.erreurs === 1 ? ' erreur' : ' erreurs') +
+        ' · tendance : ' + tendanceCompteurTestT3A(compteur);
+}
+
+function texteResultatsTestT3A() {
+    const libellesTaches = {
+        nback: 'N-Back',
+        carre: 'Carrés',
+        consigne: 'Consignes'
+    };
+    return paliersTestT3A.map(palier => {
+        const compteurs = comptePalierTestT3A(palier);
+        const taches = ['nback'];
+        if (palier >= 2) taches.push('carre');
+        if (palier >= 3) taches.push('consigne');
+        return 'Palier ' + palier + '\n' + taches
+            .map(tache => texteCompteurTestT3A(libellesTaches[tache], compteurs[tache]))
+            .join('\n');
+    }).join('\n\n');
+}
+
+function resumeScoresEnregistresTestT3A(partie) {
+    const libelles = { nback: 'N-Back', carre: 'Carrés', consigne: 'Consignes' };
+    if (!partie.scoresParPalier) return partie.precision + '%';
+    return Object.keys(partie.scoresParPalier).map(palier => {
+        const taches = partie.scoresParPalier[palier];
+        const detail = Object.keys(taches).map(tache =>
+            libelles[tache] + ' ' + taches[tache].reussites + '/' + taches[tache].erreurs
+        ).join(', ');
+        return 'P' + palier + ' ' + detail;
+    }).join(' · ');
+}
+
+function resumeTendancesEnregistreesTestT3A(partie) {
+    if (!partie.scoresParPalier) return '—';
+    const libelles = { nback: 'N-Back', carre: 'Carrés', consigne: 'Consignes' };
+    return Object.keys(partie.scoresParPalier).map(palier =>
+        Object.keys(partie.scoresParPalier[palier]).map(tache =>
+            'P' + palier + ' ' + libelles[tache] + ' ' +
+                partie.scoresParPalier[palier][tache].tendance
+        ).join(', ')
+    ).join(' · ');
+}
+
+function calculerPrecisionTestT3A() {
+    let reussites = 0;
+    let erreurs = 0;
+    paliersTestT3A.forEach(palier => {
+        const compteurs = comptePalierTestT3A(palier);
+        ['nback', ...(palier >= 2 ? ['carre'] : []), ...(palier >= 3 ? ['consigne'] : [])]
+            .forEach(tache => {
+                reussites += compteurs[tache].reussites;
+                erreurs += compteurs[tache].erreurs;
+            });
+    });
+    const essais = reussites + erreurs;
+    return essais ? Math.round((reussites / essais) * 100) : 0;
+}
+
+function creerStimulusNBackTestT3A() {
+    const banque = STIMULI_NBACK.lettres;
+    const peutEtreCible = historiqueNBackTestT3A.length >= niveauNBackTestT3A;
+    cibleNBackTestT3A = peutEtreCible && Math.random() < 0.3;
+    if (cibleNBackTestT3A) {
+        stimulusNBackTestT3A =
+            historiqueNBackTestT3A[historiqueNBackTestT3A.length - niveauNBackTestT3A];
+    } else {
+        const stimulusPrecedent = peutEtreCible
+            ? historiqueNBackTestT3A[historiqueNBackTestT3A.length - niveauNBackTestT3A]
+            : null;
+        const autresStimuli = banque.filter(stimulus => stimulus !== stimulusPrecedent);
+        stimulusNBackTestT3A = autresStimuli[Math.floor(Math.random() * autresStimuli.length)];
+    }
+    historiqueNBackTestT3A.push(stimulusNBackTestT3A);
+    reponseNBackTestT3A = false;
+    testT3aNbackStimulus.textContent = stimulusNBackTestT3A;
+}
+
+function creerStimulusCouleurTestT3A() {
+    couleurTestT3A = Math.random() < 0.5 ? 'rouge' : 'jaune';
+    reponseCouleurTestT3A = false;
+    testT3aColorStimulus.style.backgroundColor = couleurTestT3A === 'rouge'
+        ? '#e74c3c'
+        : '#f1c40f';
+    testT3aColorStimulus.setAttribute('aria-label', 'Carré ' + couleurTestT3A);
+}
+
+function creerStimulusCommandeTestT3A() {
+    commandeTestT3A = String(1 + Math.floor(Math.random() * 3));
+    reponseCommandeTestT3A = false;
+    testT3aCommand.textContent = 'APPUYER SUR ' + commandeTestT3A;
+}
+
+function actualiserScoreTestT3A() {
+    if (!scoresTestT3A || indexSequenceTestT3A >= sequencesTestT3A.length) return;
+    const palier = sequencesTestT3A[indexSequenceTestT3A];
+    const compteurs = comptePalierTestT3A(palier);
+    const taches = ['N-Back ' + compteurs.nback.reussites + '/' + compteurs.nback.erreurs];
+    if (palier >= 2) taches.push('Carré ' + compteurs.carre.reussites + '/' + compteurs.carre.erreurs);
+    if (palier >= 3) taches.push('Consigne ' + compteurs.consigne.reussites + '/' + compteurs.consigne.erreurs);
+    testT3aLiveScore.textContent = taches.join(' · ');
+}
+
+function evaluerFenetreTestT3A() {
+    if (!reponseNBackTestT3A) enregistrerEssaiTestT3A('nback', false);
+    if (sequencesTestT3A[indexSequenceTestT3A] >= 2 && !reponseCouleurTestT3A) {
+        enregistrerEssaiTestT3A('carre', false);
+    }
+    if (sequencesTestT3A[indexSequenceTestT3A] >= 3 && !reponseCommandeTestT3A) {
+        enregistrerEssaiTestT3A('consigne', false);
+    }
+}
+
+function repondreNBackTestT3A(touche) {
+    if (reponseNBackTestT3A || (touche !== '9' && touche !== '0')) return;
+    reponseNBackTestT3A = true;
+    enregistrerEssaiTestT3A('nback', touche === (cibleNBackTestT3A ? '9' : '0'));
+}
+
+function repondreCouleurTestT3A(touche) {
+    if (reponseCouleurTestT3A || (touche !== 'a' && touche !== 'z')) return;
+    reponseCouleurTestT3A = true;
+    enregistrerEssaiTestT3A('carre', touche === (couleurTestT3A === 'rouge' ? 'a' : 'z'));
+}
+
+function repondreCommandeTestT3A(touche) {
+    if (reponseCommandeTestT3A || !['1', '2', '3'].includes(touche)) return;
+    reponseCommandeTestT3A = true;
+    enregistrerEssaiTestT3A('consigne', touche === commandeTestT3A);
+}
+
+function demarrerSequenceTestT3A() {
+    if (indexSequenceTestT3A >= sequencesTestT3A.length) {
+        arreterHorlogeTestT3A();
+        finDuJeu();
+        return;
+    }
+
+    const palier = sequencesTestT3A[indexSequenceTestT3A];
+    dureeStimulusTestT3A = dureesStimuliTestT3A[palier] * 1000;
+    dernierTickTestT3A = performance.now();
+    tempsEcouleSequenceTestT3A = 0;
+    tempsFenetreTestT3A = 0;
+    historiqueNBackTestT3A = [];
+    testT3aSequenceLabel.textContent = 'Séquence ' +
+        (indexSequenceTestT3A + 1) + '/' + sequencesTestT3A.length +
+        ' · Palier ' + palier;
+    progress.textContent = (indexSequenceTestT3A + 1) + '/' + sequencesTestT3A.length;
+    testT3aTimeLabel.textContent = '1:30';
+    testT3aNbackPanel.classList.remove('hidden');
+    testT3aColorPanel.classList.toggle('hidden', palier < 2);
+    testT3aCommand.classList.toggle('hidden', palier < 3);
+    testT3aCommand.textContent = '';
+    creerStimulusNBackTestT3A();
+    if (palier >= 2) creerStimulusCouleurTestT3A();
+    if (palier >= 3) creerStimulusCommandeTestT3A();
+    actualiserScoreTestT3A();
+}
+
+function demarrerTestT3A() {
+    sequencesTestT3A = creerPlanSequencesTestT3A();
+    indexSequenceTestT3A = 0;
+    initialiserScoresTestT3A();
+    demarrerSequenceTestT3A();
+    if (horlogeTestT3A === null) {
+        horlogeTestT3A = setInterval(tickTestT3A, 100);
+    }
+}
+
+function tickTestT3A() {
+    if (jeuActif !== 'test-t3a' || indexSequenceTestT3A >= sequencesTestT3A.length) return;
+    const maintenant = performance.now();
+    const delta = Math.min(250, Math.max(0, maintenant - dernierTickTestT3A));
+    dernierTickTestT3A = maintenant;
+    tempsFenetreTestT3A += delta;
+    tempsEcouleSequenceTestT3A += delta;
+    const tempsSequence = tempsEcouleSequenceTestT3A;
+    const palier = sequencesTestT3A[indexSequenceTestT3A];
+    testT3aTimeLabel.textContent = formatTempsT3A(Math.max(
+        0,
+        Math.ceil((DUREE_SEQUENCE_TEST_T3A * 1000 - tempsSequence) / 1000)
+    ));
+
+    while (tempsFenetreTestT3A >= dureeStimulusTestT3A &&
+        tempsSequence - tempsFenetreTestT3A + dureeStimulusTestT3A <=
+            DUREE_SEQUENCE_TEST_T3A * 1000) {
+        const finFenetre = tempsSequence - tempsFenetreTestT3A + dureeStimulusTestT3A;
+        evaluerFenetreTestT3A();
+        tempsFenetreTestT3A -= dureeStimulusTestT3A;
+        if (finFenetre < DUREE_SEQUENCE_TEST_T3A * 1000) {
+            creerStimulusNBackTestT3A();
+            if (palier >= 2) creerStimulusCouleurTestT3A();
+            if (palier >= 3) creerStimulusCommandeTestT3A();
+        }
+    }
+
+    if (tempsSequence >= DUREE_SEQUENCE_TEST_T3A * 1000) {
+        indexSequenceTestT3A++;
+        demarrerSequenceTestT3A();
+    }
+}
+
+function arreterHorlogeTestT3A() {
+    if (horlogeTestT3A !== null) {
+        clearInterval(horlogeTestT3A);
+        horlogeTestT3A = null;
+    }
+}
+
+document.addEventListener('keydown', event => {
+    if (jeuActif !== 'test-t3a' || event.repeat ||
+        indexSequenceTestT3A >= sequencesTestT3A.length) return;
+    const touche = event.key.toLowerCase();
+    if (touche === '9' || touche === '0') {
+        event.preventDefault();
+        repondreNBackTestT3A(touche);
+    } else if (touche === 'a' || touche === 'z') {
+        event.preventDefault();
+        if (sequencesTestT3A[indexSequenceTestT3A] >= 2) repondreCouleurTestT3A(touche);
+    } else if (touche === '1' || touche === '2' || touche === '3') {
+        event.preventDefault();
+        if (sequencesTestT3A[indexSequenceTestT3A] >= 3) repondreCommandeTestT3A(touche);
+    }
+});
+
 function prochaineQuestionStroop() {
     const motAffiche = couleurAleatoire(null);
     const couleurEncre = couleurAleatoire(motAffiche);
@@ -1388,20 +1827,26 @@ function verifierReponse(choix, bonneReponse) {
 // ============ FIN DU JEU ============
 function finDuJeu() {
     arreterHorlogeT3A();
+    arreterHorlogeTestT3A();
     document.body.classList.remove('t3a-active');
+    document.body.classList.remove('test-t3a-active');
     screenGame.classList.remove('t3a-game-active');
+    screenGame.classList.remove('test-t3a-game-active');
     screenGame.classList.add('hidden');
     screenEnd.classList.remove('hidden');
 
     const estNBack = jeuActif === 'nback';
     const estT3A = jeuActif === 't3a';
+    const estTestT3A = jeuActif === 'test-t3a';
     const echecs = estNBack ? echecsNBack : nbTours - score;
     const essaisEval = estNBack ? essaisComptabilisesNBack : nbTours;
     const precisionFormeT3A = precisionT3ATache(reussitesFormeT3A, erreursFormeT3A);
     const precisionCouleurT3A = precisionT3ATache(reussitesCouleurT3A, erreursCouleurT3A);
     const precisionsT3A = [precisionFormeT3A, precisionCouleurT3A]
         .filter(precisionTache => precisionTache !== null);
-    const precision = estT3A
+    const precision = estTestT3A
+        ? calculerPrecisionTestT3A()
+        : estT3A
         ? precisionsT3A.length
             ? Math.round(precisionsT3A.reduce((total, valeur) => total + valeur, 0) / precisionsT3A.length)
             : 0
@@ -1420,17 +1865,24 @@ function finDuJeu() {
     const tendanceReaction = estNBack
         ? 'indisponible'
         : calculerTendanceReaction(reactionsPourResultat);
-    if (estT3A) score = precision;
+    if (estT3A || estTestT3A) score = precision;
 
     resultPlayer.textContent = '👤 ' + joueur;
     resultGame.textContent = '🎮 ' + libelleJeuActif();
-    resultScore.textContent = estT3A
+    resultScore.textContent = estTestT3A
+        ? '🎯 Précision globale : ' + precision + '%'
+        : estT3A
         ? resumeTacheT3A('Formes', reussitesFormeT3A, erreursFormeT3A) +
             ' · ' + resumeTacheT3A('Couleurs', reussitesCouleurT3A, erreursCouleurT3A)
         : estNBack
             ? '🎯 Réussites : ' + score + '/' + essaisEval
             : '🎯 Score : ' + score + '/' + nbTours;
-    resultAccuracy.textContent = estT3A
+    testT3aResultDetail.classList.toggle('hidden', !estTestT3A);
+    testT3aResultDetail.textContent = estTestT3A ? texteResultatsTestT3A() : '';
+    resultAccuracy.classList.toggle('hidden', estTestT3A);
+    resultAccuracy.textContent = estTestT3A
+        ? ''
+        : estT3A
         ? '📊 Précision — formes : ' +
             (precisionFormeT3A === null ? '—' : precisionFormeT3A + '%') +
             ' · couleurs : ' +
@@ -1450,14 +1902,14 @@ function finDuJeu() {
     resultNeutral.textContent = estNBack
         ? '➖ Non-cibles ignorées : ' + nonCiblesIgnoreesNBack + ' (non comptabilisées)'
         : '';
-    resultReaction.classList.toggle('hidden', estNBack);
+    resultReaction.classList.toggle('hidden', estNBack || estTestT3A);
     resultReaction.textContent = estNBack
         ? ''
         : estT3A
             ? '⚡ Temps moyen de détection : ' +
                 (moyenne === null ? '—' : moyenne + ' ms')
             : '⚡ Temps de réaction moyen : ' + moyenne + ' ms';
-    resultTrend.classList.toggle('hidden', estNBack);
+    resultTrend.classList.toggle('hidden', estNBack || estTestT3A);
     resultTrend.textContent = estNBack
         ? ''
         : '📈 Tendance des réactions : ' + descriptionTendanceReaction(tendanceReaction);
@@ -1526,6 +1978,26 @@ function finDuJeu() {
         partie.changementCouleurCible = changerCouleurCibleT3A;
         partie.versionScoringT3A = 6;
     }
+    if (estTestT3A) {
+        partie.versionScoringTestT3A = 1;
+        partie.paliers = paliersTestT3A.slice();
+        partie.nombreSequencesParPalier = Object.assign({}, nombreSequencesTestT3A);
+        partie.niveauNBackTestT3A = niveauNBackTestT3A;
+        partie.dureesStimuliTestT3A = Object.assign({}, dureesStimuliTestT3A);
+        partie.scoresParPalier = {};
+        paliersTestT3A.forEach(palier => {
+            partie.scoresParPalier[palier] = {};
+            const compteurs = comptePalierTestT3A(palier);
+            ['nback', ...(palier >= 2 ? ['carre'] : []), ...(palier >= 3 ? ['consigne'] : [])]
+                .forEach(tache => {
+                    partie.scoresParPalier[palier][tache] = {
+                        reussites: compteurs[tache].reussites,
+                        erreurs: compteurs[tache].erreurs,
+                        tendance: tendanceCompteurTestT3A(compteurs[tache])
+                    };
+                });
+        });
+    }
     sauvegarderPartie(partie);
 }
 
@@ -1569,6 +2041,7 @@ btnExportCsv.addEventListener('click', () => {
     const filtreTours = statsRoundFilter.value;
     const estNBack = jeuActif === 'nback';
     const estT3A = jeuActif === 't3a';
+    const estTestT3A = jeuActif === 'test-t3a';
     const parties = partiesDe(nom).filter(partie =>
         filtreTours === '' || Number(partie.tours) === Number(filtreTours)
     );
@@ -1633,6 +2106,19 @@ btnExportCsv.addEventListener('click', () => {
                     partie.reactionMoyenne
                 ])
             ]
+        : estTestT3A
+            ? [
+                ['Joueur', 'Jeu', 'Date', 'Séquences', 'Précision (%)', 'Résultats par palier', 'Tendances'],
+                ...parties.map(partie => [
+                    nom,
+                    JEUX[jeuActif].nom,
+                    partie.date,
+                    partie.tours,
+                    partie.precision,
+                    resumeScoresEnregistresTestT3A(partie),
+                    resumeTendancesEnregistreesTestT3A(partie)
+                ])
+            ]
         : [
             ['Joueur', 'Jeu', 'Version', 'Date', 'Score', 'Nombre de tours', 'Précision (%)', 'Réaction moyenne (ms)', 'Tendance réaction'],
             ...parties.map(partie => [
@@ -1659,6 +2145,7 @@ btnExportCsv.addEventListener('click', () => {
     const nomFichier = nom.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_') || 'joueur';
     const suffixeMode = jeuActif === 'formes' ? '-mode-' + modeFormes : '';
     const suffixeT3A = estT3A ? '-t3a' : '';
+    const suffixeTestT3A = estTestT3A ? '-test-t3a' : '';
     const suffixeNBack = jeuActif === 'nback'
         ? '-n' + niveauNBack + '-' + typeStimulusNBack + '-' +
             String(dureeNBack).replace('.', '_') + 's'
@@ -1675,27 +2162,38 @@ btnExportCsv.addEventListener('click', () => {
 function afficherStats(nom, reinitialiserFiltre) {
     const estNBack = jeuActif === 'nback';
     const estT3A = jeuActif === 't3a';
-    statBestLabel.textContent = estT3A ? 'meilleure précision' : 'meilleur score';
+    const estTestT3A = jeuActif === 'test-t3a';
+    statBestLabel.textContent = estT3A || estTestT3A ? 'meilleure précision' : 'meilleur score';
     statAvgAccuracyLabel.textContent = estNBack
         ? 'taux de réussite moyen (essais évalués)'
-        : estT3A ? 'précision moyenne des deux tâches' : 'précision moyenne';
+        : estT3A ? 'précision moyenne des deux tâches'
+            : estTestT3A ? 'précision globale moyenne' : 'précision moyenne';
     statAvgReactionLabel.textContent = estNBack
         ? 'taux d’échec moyen (essais évalués)'
-        : estT3A ? 'temps moyen de détection' : 'réaction moyenne';
+        : estT3A ? 'temps moyen de détection'
+            : estTestT3A ? 'temps de réaction (non mesuré)' : 'réaction moyenne';
     statLatestTrendLabel.textContent = estNBack
         ? 'taux d’échec de la dernière partie'
-        : estT3A ? 'erreurs formes / couleurs de la dernière partie' : 'tendance de la dernière partie';
-    statsRoundFilterLabel.textContent = estT3A
-        ? 'Filtrer par nombre de manches :'
+        : estT3A ? 'erreurs formes / couleurs de la dernière partie'
+            : estTestT3A ? 'tendance des tâches de la dernière partie'
+                : 'tendance de la dernière partie';
+    statsRoundFilterLabel.textContent = estTestT3A
+        ? 'Filtrer par nombre de séquences :'
+        : estT3A
+            ? 'Filtrer par nombre de manches :'
         : 'Filtrer par nombre de tours :';
-    statsScoreHeader.textContent = estT3A ? 'Réussites / erreurs' : 'Score';
+    statsScoreHeader.textContent = estTestT3A
+        ? 'Résultats par palier'
+        : estT3A ? 'Réussites / erreurs' : 'Score';
     statsPrecisionHeader.textContent = estNBack
         ? 'Taux de réussite (évalués)'
-        : estT3A ? 'Précision formes / couleurs' : 'Précision';
+        : estT3A ? 'Précision formes / couleurs'
+            : estTestT3A ? 'Précision globale' : 'Précision';
     statsReactionHeader.textContent = estNBack ? 'Taux d’échec (évalués)' : 'Réaction';
     statsTrendHeader.textContent = estNBack
         ? 'Non-cibles ignorées'
-        : estT3A ? 'Erreurs formes / couleurs' : 'Tendance';
+        : estT3A ? 'Erreurs formes / couleurs'
+            : estTestT3A ? 'Tendances' : 'Tendance';
 
     const toutesLesParties = partiesDe(nom);
 
@@ -1714,13 +2212,17 @@ function afficherStats(nom, reinitialiserFiltre) {
         toutesOption.textContent = 'Toutes les parties';
         statsRoundFilter.appendChild(toutesOption);
 
-        const nombresDeTours = estT3A
-            ? Array.from({ length: 10 }, (_, index) => index + 1)
-            : Array.from({ length: 10 }, (_, index) => (index + 1) * 5);
+        const nombresDeTours = estTestT3A
+            ? [...new Set(toutesLesParties.map(partie => Number(partie.tours)))].sort((a, b) => a - b)
+            : estT3A
+                ? Array.from({ length: 10 }, (_, index) => index + 1)
+                : Array.from({ length: 10 }, (_, index) => (index + 1) * 5);
         nombresDeTours.forEach(tours => {
             const option = document.createElement('option');
             option.value = String(tours);
-            option.textContent = tours + (estT3A
+            option.textContent = tours + (estTestT3A
+                ? tours === 1 ? ' séquence' : ' séquences'
+                : estT3A
                 ? tours === 1 ? ' manche' : ' manches'
                 : ' tours');
             statsRoundFilter.appendChild(option);
@@ -1742,7 +2244,9 @@ function afficherStats(nom, reinitialiserFiltre) {
         statLatestTrend.textContent = '—';
         statsTableBody.innerHTML = '';
         statsEmpty.textContent = 'Aucune partie trouvée avec ' + nombreDeToursFiltre +
-            (estT3A
+            (estTestT3A
+                ? Number(nombreDeToursFiltre) === 1 ? ' séquence.' : ' séquences.'
+                : estT3A
                 ? Number(nombreDeToursFiltre) === 1 ? ' manche.' : ' manches.'
                 : ' tours.');
         statsEmpty.classList.remove('hidden');
@@ -1757,7 +2261,7 @@ function afficherStats(nom, reinitialiserFiltre) {
     statTotal.textContent = parties.length;
 
     const meilleur = Math.max(...parties.map(p => p.score));
-    statBest.textContent = estT3A ? meilleur + '%' : meilleur;
+    statBest.textContent = estT3A || estTestT3A ? meilleur + '%' : meilleur;
 
     const precMoyenne = Math.round(
         parties.reduce((a, p) => a + p.precision, 0) / parties.length
@@ -1770,6 +2274,9 @@ function afficherStats(nom, reinitialiserFiltre) {
         );
         statAvgReaction.textContent = echecsMoyens + '%';
         statLatestTrend.textContent = parties[parties.length - 1].tauxEchec + '%';
+    } else if (estTestT3A) {
+        statAvgReaction.textContent = '—';
+        statLatestTrend.textContent = resumeTendancesEnregistreesTestT3A(parties[parties.length - 1]);
     } else {
         const reactions = parties
             .map(partie => partie.reactionMoyenne)
@@ -1805,7 +2312,9 @@ function afficherStats(nom, reinitialiserFiltre) {
         const tdDate = document.createElement('td');
         tdDate.textContent = p.date;
         const tdScore = document.createElement('td');
-        tdScore.textContent = estT3A
+        tdScore.textContent = estTestT3A
+            ? resumeScoresEnregistresTestT3A(p)
+            : estT3A
             ? p.versionScoringT3A >= 4
                 ? 'Formes ' + p.reussitesForme + '/' + p.erreursForme +
                     ' · Couleurs ' + p.reussitesCouleur + '/' + p.erreursCouleur
@@ -1815,16 +2324,22 @@ function afficherStats(nom, reinitialiserFiltre) {
                 ? p.score + '/' + p.essaisComptabilises
                 : p.score + '/' + p.tours;
         const tdPrecision = document.createElement('td');
-        tdPrecision.textContent = estT3A && p.versionScoringT3A >= 4
+        tdPrecision.textContent = estTestT3A
+            ? p.precision + '%'
+            : estT3A && p.versionScoringT3A >= 4
             ? 'F ' + (p.precisionForme == null ? '—' : p.precisionForme + '%') +
                 ' · C ' + (p.precisionCouleur == null ? '—' : p.precisionCouleur + '%')
             : p.precision + '%';
         const tdReaction = document.createElement('td');
-        tdReaction.textContent = estNBack
+        tdReaction.textContent = estTestT3A
+            ? '—'
+            : estNBack
             ? p.tauxEchec + '%'
             : p.reactionMoyenne == null ? '—' : p.reactionMoyenne + ' ms';
         const tdTrend = document.createElement('td');
-        tdTrend.textContent = estNBack
+        tdTrend.textContent = estTestT3A
+            ? resumeTendancesEnregistreesTestT3A(p)
+            : estNBack
             ? p.nonCiblesIgnorees
             : estT3A
                 ? p.versionScoringT3A >= 4

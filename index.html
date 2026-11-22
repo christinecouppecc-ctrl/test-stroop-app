@@ -44,13 +44,30 @@
                     <strong>Tâche N-Back</strong>
                     <span>Retrouvez le stimulus vu N essais plus tôt.</span>
                 </button>
+                <button class="game-card" type="button" data-menu="multitache">
+                    <span class="game-icon" aria-hidden="true">◉◉</span>
+                    <strong>Multitâche</strong>
+                    <span>Entraînez votre attention sur plusieurs tâches.</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="screen-multitache" class="hidden">
+            <h2>Multitâche</h2>
+            <div class="game-picker">
                 <button class="game-card" type="button" data-game="t3a">
                     <span class="game-icon" aria-hidden="true">◉◉</span>
                     <strong>Double Tâche</strong>
                     <span>Entraînement à deux flux visuels.</span>
                     <span class="game-availability">Uniquement sur ordinateur, pas sur téléphone.</span>
                 </button>
+                <button class="game-card" type="button" data-game="test-t3a">
+                    <span class="game-icon" aria-hidden="true">3×</span>
+                    <strong>Test T3A</strong>
+                    <span>Gérez jusqu’à trois tâches en parallèle.</span>
+                </button>
             </div>
+            <button id="btn-multitache-back" class="btn-secondary">← Retour aux jeux</button>
         </div>
 
         <div id="screen-form-mode" class="hidden">
@@ -114,6 +131,49 @@
                 </fieldset>
             </div>
 
+            <div id="test-t3a-options" class="config test-t3a-options" hidden>
+                <label for="test-t3a-combination">Paliers à jouer :</label>
+                <select id="test-t3a-combination">
+                    <option value="1-2-3" selected>Paliers 1, 2 et 3</option>
+                    <option value="1">Palier 1</option>
+                    <option value="2">Palier 2</option>
+                    <option value="3">Palier 3</option>
+                    <option value="1-2">Paliers 1 et 2</option>
+                    <option value="2-3">Paliers 2 et 3</option>
+                </select>
+                <p class="test-t3a-default">Mode de base : 9 séquences de 1 min 30 (1 au palier 1, 4 au palier 2 et 4 au palier 3).</p>
+                <div class="test-t3a-config-grid">
+                    <fieldset>
+                        <legend>Palier 1 · N-Back</legend>
+                        <label for="test-t3a-nback-level">N-Back :</label>
+                        <select id="test-t3a-nback-level">
+                            <option value="1">N-1</option>
+                            <option value="2" selected>N-2</option>
+                            <option value="3">N-3</option>
+                            <option value="4">N-4</option>
+                        </select>
+                        <label for="test-t3a-nback-duration">Durée par stimulus (s) :</label>
+                        <input type="number" id="test-t3a-nback-duration" min="2" max="10" value="3">
+                        <label for="test-t3a-count-1">Nombre de séquences :</label>
+                        <input type="number" id="test-t3a-count-1" min="1" max="10" value="1">
+                    </fieldset>
+                    <fieldset>
+                        <legend>Palier 2 · N-Back + carré</legend>
+                        <label for="test-t3a-duration-2">Durée des stimuli (s) :</label>
+                        <input type="number" id="test-t3a-duration-2" min="2" max="10" value="3">
+                        <label for="test-t3a-count-2">Nombre de séquences :</label>
+                        <input type="number" id="test-t3a-count-2" min="1" max="10" value="4">
+                    </fieldset>
+                    <fieldset>
+                        <legend>Palier 3 · N-Back + carré + consigne</legend>
+                        <label for="test-t3a-duration-3">Durée des stimuli (s) :</label>
+                        <input type="number" id="test-t3a-duration-3" min="2" max="10" value="3">
+                        <label for="test-t3a-count-3">Nombre de séquences :</label>
+                        <input type="number" id="test-t3a-count-3" min="1" max="10" value="4">
+                    </fieldset>
+                </div>
+            </div>
+
             <div class="config">
                 <label for="player-input">Nom du joueur :</label>
                 <input type="text" id="player-input" placeholder="Votre nom" maxlength="20">
@@ -175,6 +235,26 @@
                     <span>Le chronomètre attendra que l’écran soit en mode paysage.</span>
                 </div>
             </div>
+            <div id="test-t3a-game" class="hidden" aria-live="polite">
+                <div class="test-t3a-status">
+                    <strong id="test-t3a-sequence">Séquence 1/9 · Palier 1</strong>
+                    <strong id="test-t3a-time">1:30</strong>
+                    <span id="test-t3a-live-score"></span>
+                </div>
+                <div id="test-t3a-board" class="test-t3a-board">
+                    <section id="test-t3a-nback-panel" class="test-t3a-panel">
+                        <h3>N-Back</h3>
+                        <div id="test-t3a-nback-stimulus" class="test-t3a-nback-stimulus"></div>
+                        <span>Identique : 9 · Différent : 0</span>
+                    </section>
+                    <div id="test-t3a-command" class="test-t3a-command hidden"></div>
+                    <section id="test-t3a-color-panel" class="test-t3a-panel hidden">
+                        <h3>Carré</h3>
+                        <div id="test-t3a-color-stimulus" class="test-t3a-color-stimulus"></div>
+                        <span>Rouge : A · Jaune : Z</span>
+                    </section>
+                </div>
+            </div>
             <div id="word"></div>
 
             <div id="answers"></div>
@@ -186,6 +266,7 @@
         <div id="screen-end" class="hidden">
             <h2>Terminé ! 🎉</h2>
             <p id="result-game" class="result-line"></p>
+            <p id="test-t3a-result-detail" class="result-line test-t3a-result-detail hidden"></p>
             <p id="result-player" class="result-line"></p>
             <p id="result-score" class="result-line"></p>
             <p id="result-accuracy" class="result-line"></p>

@@ -263,6 +263,89 @@ h3 {
     accent-color: #667eea;
 }
 
+.test-t3a-options {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.test-t3a-options[hidden] {
+    display: none !important;
+}
+
+.test-t3a-options > label {
+    font-size: 15px;
+}
+
+.test-t3a-options > select,
+.test-t3a-config-grid input {
+    padding: 8px 10px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    font: inherit;
+    text-align: center;
+}
+
+.test-t3a-options > select:focus,
+.test-t3a-config-grid input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.test-t3a-default {
+    max-width: 600px;
+    color: #666;
+    font-size: 14px;
+}
+
+.test-t3a-config-grid {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    text-align: left;
+}
+
+.test-t3a-config-grid fieldset {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+}
+
+.test-t3a-config-grid legend {
+    padding: 0 5px;
+    color: #4f5fbd;
+    font-weight: 600;
+}
+
+.test-t3a-config-grid label {
+    font-size: 14px;
+}
+
+.test-t3a-config-grid input {
+    width: 80px;
+    align-self: center;
+}
+
+.test-t3a-config-grid select {
+    max-width: 100%;
+    padding: 7px;
+    border: 1px solid #ddd;
+    border-radius: 7px;
+    background: #fff;
+    font: inherit;
+}
+
+.test-t3a-config-grid [disabled] {
+    opacity: 0.5;
+}
+
 /* Boutons */
 .btn-primary {
     background: #667eea;
@@ -457,6 +540,12 @@ h3 {
 .record {
     color: #f39c12;
     font-weight: bold;
+}
+
+.test-t3a-result-detail {
+    white-space: pre-line;
+    font-size: 16px;
+    line-height: 1.5;
 }
 
 /* Historique */
@@ -737,6 +826,105 @@ body.t3a-active #game-prompt {
     display: none;
 }
 
+body.test-t3a-active .container {
+    max-width: 1000px;
+}
+
+body.test-t3a-active #screen-game.test-t3a-game-active {
+    display: flex;
+    flex-direction: column;
+}
+
+body.test-t3a-active #screen-game.test-t3a-game-active.hidden {
+    display: none;
+}
+
+#test-t3a-game {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#test-t3a-game.hidden {
+    display: none;
+}
+
+.test-t3a-status {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 16px;
+    color: #555;
+    font-size: 16px;
+}
+
+.test-t3a-board {
+    position: relative;
+    min-height: 420px;
+    border: 2px solid #e3e5f5;
+    border-radius: 16px;
+    background: #f8f8fc;
+}
+
+.test-t3a-panel {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid #dfe3fb;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.test-t3a-panel h3 {
+    margin: 0;
+}
+
+#test-t3a-nback-panel {
+    top: 16px;
+    left: 16px;
+}
+
+#test-t3a-color-panel {
+    right: 16px;
+    bottom: 16px;
+}
+
+.test-t3a-nback-stimulus {
+    display: flex;
+    min-width: 100px;
+    min-height: 90px;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    font-size: 56px;
+    font-weight: bold;
+}
+
+.test-t3a-color-stimulus {
+    width: 92px;
+    height: 92px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
+}
+
+.test-t3a-command {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #333;
+    font-size: clamp(24px, 4vw, 42px);
+    font-weight: 800;
+}
+
+.test-t3a-command.hidden,
+.test-t3a-panel.hidden {
+    display: none;
+}
+
 @media (max-width: 900px) and (orientation: landscape) {
     body.t3a-active .container {
         padding: 8px 16px;
@@ -753,5 +941,27 @@ body.t3a-active #game-prompt {
 
     .t3a-response {
         min-height: 48px;
+    }
+}
+
+@media (max-width: 600px) {
+    .test-t3a-board {
+        min-height: 350px;
+    }
+
+    .test-t3a-panel {
+        gap: 4px;
+        padding: 8px;
+    }
+
+    .test-t3a-nback-stimulus {
+        min-width: 68px;
+        min-height: 66px;
+        font-size: 44px;
+    }
+
+    .test-t3a-color-stimulus {
+        width: 64px;
+        height: 64px;
     }
 }
