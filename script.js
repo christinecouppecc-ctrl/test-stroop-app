@@ -12,6 +12,9 @@ const FORMES = [
     { nom: 'ÉTOILE', id: 'etoile', classe: 'shape-star' },
     { nom: 'TRIANGLE', id: 'triangle', classe: 'shape-triangle' }
 ];
+const DUREE_FORME_T3A = 1200;
+const PAUSE_FORME_T3A = 800;
+const INTERVALLE_COULEUR_T3A = 800;
 const JEUX = {
     stroop: {
         nom: 'Test de Stroop',
@@ -46,8 +49,8 @@ const JEUX = {
     t3a: {
         nom: 'Attention partagée (inspirée du T3A)',
         titreResultats: 'Résultats de l’attention partagée',
-        instructions: 'Surveillez les deux zones en même temps et répondez lorsque la cible indiquée sous une zone apparaît. Les stimuli changent toutes les 800 ms. Version d’entraînement à deux flux visuels, sans flux auditif.',
-        prompt: 'Répondez uniquement aux cibles indiquées sous les zones.'
+        instructions: 'Surveillez les deux zones en même temps. Pour les formes, appuyez sur Espace lorsque la forme cible apparaît; une absence de réponse n’est pas comptée. Une forme non-cible fixe réapparaît entre les formes présentées pendant 1 200 ms. Pour les couleurs, cliquez sur la cible; une cible couleur ignorée compte comme erreur. Les résultats des deux tâches sont séparés.',
+        prompt: 'Espace pour la forme cible · Clic pour la couleur cible.'
     }
 };
 
@@ -164,6 +167,7 @@ const statAvgAccuracyLabel = document.getElementById('stat-avg-accuracy-label');
 const statAvgReactionLabel = document.getElementById('stat-avg-reaction-label');
 const statLatestTrendLabel = document.getElementById('stat-latest-trend-label');
 const statsRoundFilterLabel = document.getElementById('stats-round-filter-label');
+const statsScoreHeader = document.getElementById('stats-score-header');
 const statsPrecisionHeader = document.getElementById('stats-precision-header');
 const statsReactionHeader = document.getElementById('stats-reaction-header');
 const statsTrendHeader = document.getElementById('stats-trend-header');
@@ -201,9 +205,13 @@ let horlogeT3A = null;
 let dernierTickT3A = 0;
 let tempsEcouleMancheT3A = 0;
 let tempsEcoulePauseT3A = 0;
-let tempsStimulusT3A = 0;
+let tempsStimulusCouleurT3A = 0;
 let debutStimulusT3A = 0;
 let formeT3AActuelle = '';
+let formeT3ARepos = '';
+let formeT3AEnPresentation = false;
+let tempsPhaseFormeT3A = 0;
+let debutStimulusFormeT3A = 0;
 let couleurT3AActuelle = null;
 let reponseFormeT3A = false;
 let reponseCouleurT3A = false;
@@ -213,6 +221,15 @@ let ciblesManqueesT3A = 0;
 let ciblesCouleurManqueesT3A = 0;
 let faussesAlertesT3A = 0;
 let decisionsT3A = 0;
+let ciblesFormeT3A = 0;
+let reussitesFormeT3A = 0;
+let erreursFormeT3A = 0;
+let reussitesCouleurT3A = 0;
+let erreursCouleurT3A = 0;
+let faussesAlertesFormeT3A = 0;
+let faussesAlertesCouleurT3A = 0;
+let decisionsFormeT3A = 0;
+let decisionsCouleurT3A = 0;
 let reactionsT3A = [];
 let questionVerrouillee = false;
 let timeoutQuestion = null;
@@ -341,7 +358,7 @@ function afficherConfigurationJeu() {
     t3aOptions.hidden = jeuActif !== 't3a';
     roundsConfig.hidden = jeuActif === 't3a';
     if (jeuActif === 't3a') {
-        gameInstructions.textContent += ' La cible de forme reste fixe pendant une manche; les formes présentées changent à chaque stimulus. Les options cochées font varier les cibles entre les manches.';
+        gameInstructions.textContent += ' La forme fixe est toujours différente de la cible; elle réapparaît pendant 800 ms entre les formes aléatoires présentées pendant 1 200 ms. Les options cochées font varier les cibles entre les manches.';
     }
     if (jeuActif !== 't3a') roundsInput.value = toursParJeu[jeuActif];
     btnBackGames.textContent = jeuActif === 'formes'
@@ -487,12 +504,19 @@ playerInput.addEventListener('input', () => {
             const scorePartie = jeuActif === 'nback'
                 ? p.score + '/' + p.essaisComptabilises
                 : jeuActif === 't3a'
-                    ? p.detections + '/' + p.cibles + ' cibles'
+                    ? p.versionScoringT3A >= 4
+                        ? 'Formes ' + p.reussitesForme + '/' + p.erreursForme +
+                            ' · Couleurs ' + p.reussitesCouleur + '/' + p.erreursCouleur
+                        : p.detections + '/' + p.cibles + ' cibles'
                     : p.score + '/' + p.tours;
             const details = jeuActif === 'nback'
                 ? ' (' + p.tauxEchec + '% échec, ' + p.nonCiblesIgnorees + ' non-cibles ignorées)'
-                : ' (' + p.precision + '%, ' +
-                    (p.reactionMoyenne == null ? '—' : p.reactionMoyenne + ' ms') + ')';
+                : jeuActif === 't3a' && p.versionScoringT3A >= 4
+                    ? ' (précision F ' + (p.precisionForme == null ? '—' : p.precisionForme + '%') +
+                        ' · C ' + (p.precisionCouleur == null ? '—' : p.precisionCouleur + '%') +
+                        ', ' + (p.reactionMoyenne == null ? '—' : p.reactionMoyenne + ' ms') + ')'
+                    : ' (' + p.precision + '%, ' +
+                        (p.reactionMoyenne == null ? '—' : p.reactionMoyenne + ' ms') + ')';
             li.textContent = p.date + ' — ' + scorePartie + details;
             historyList.appendChild(li);
         });
@@ -544,11 +568,22 @@ btnStart.onclick = () => {
     ciblesCouleurManqueesT3A = 0;
     faussesAlertesT3A = 0;
     decisionsT3A = 0;
+    ciblesFormeT3A = 0;
+    reussitesFormeT3A = 0;
+    erreursFormeT3A = 0;
+    reussitesCouleurT3A = 0;
+    erreursCouleurT3A = 0;
+    faussesAlertesFormeT3A = 0;
+    faussesAlertesCouleurT3A = 0;
+    decisionsFormeT3A = 0;
+    decisionsCouleurT3A = 0;
     reactionsT3A = [];
     formeCibleT3A = 'etoile';
     couleurCibleT3A = 'ROUGE';
     formeT3AActuelle = '';
-    t3aLiveScore.textContent = 'Réussites : 0 · Erreurs : 0';
+    formeT3ARepos = '';
+    formeT3AEnPresentation = false;
+    t3aLiveScore.textContent = 'Formes 0 réussite / 0 erreur · Couleurs 0 réussite / 0 erreur';
     essaisAxCpt = jeuActif === 'ax-cpt' ? creerEssaisAxCpt(nbTours) : [];
     sequenceNBack = jeuActif === 'nback'
         ? creerSequenceNBack(nbTours, niveauNBack, typeStimulusNBack)
@@ -632,9 +667,8 @@ function contenuDesResultats() {
     }
 
     if (jeuActif === 't3a') {
-        const precision = decisionsT3A
-            ? Math.round((detectionsT3A / decisionsT3A) * 100)
-            : 0;
+        const precisionForme = precisionT3ATache(reussitesFormeT3A, erreursFormeT3A);
+        const precisionCouleur = precisionT3ATache(reussitesCouleurT3A, erreursCouleurT3A);
         const reactionMoyenne = reactionsT3A.length
             ? Math.round(reactionsT3A.reduce((total, temps) => total + temps, 0) / reactionsT3A.length)
             : 0;
@@ -642,15 +676,13 @@ function contenuDesResultats() {
             titreResultatsActif(),
             'Joueur : ' + joueur,
             'Manches : ' + nombreManchesT3A,
-            'Cibles détectées : ' + detectionsT3A + '/' + ciblesT3A,
-            'Erreurs totales : ' + totalErreursT3A(),
-            'Cibles forme manquées (non comptées comme erreurs) : ' +
-                (ciblesManqueesT3A - ciblesCouleurManqueesT3A),
-            'Cibles couleur ignorées (comptées comme erreurs) : ' +
-                ciblesCouleurManqueesT3A,
-            'Fausses alertes : ' + faussesAlertesT3A,
-            'Précision des clics : ' + detectionsT3A + '/' + decisionsT3A +
-                ' (' + precision + '%)',
+            resumeTacheT3A('Formes', reussitesFormeT3A, erreursFormeT3A) +
+                ' · précision : ' + (precisionForme === null ? '—' : precisionForme + '%'),
+            resumeTacheT3A('Couleurs', reussitesCouleurT3A, erreursCouleurT3A) +
+                ' · précision : ' + (precisionCouleur === null ? '—' : precisionCouleur + '%'),
+            'Cibles couleur ignorées : ' + ciblesCouleurManqueesT3A,
+            'Fausses alertes formes : ' + faussesAlertesFormeT3A,
+            'Fausses alertes couleurs : ' + faussesAlertesCouleurT3A,
             'Temps moyen de détection : ' + reactionMoyenne + ' ms'
         ].join('\n');
     }
@@ -755,7 +787,7 @@ function actualiserLibellesCiblesT3A() {
     btnT3aLeft.setAttribute('aria-label', 'Détecter la forme ' + forme.nom.toLocaleLowerCase('fr-FR'));
     btnT3aRight.textContent = couleur.nom;
     btnT3aRight.setAttribute('aria-label', 'Détecter la couleur ' + couleur.nom.toLocaleLowerCase('fr-FR'));
-    gamePrompt.textContent = 'Forme : ' + forme.nom + ' (Espace) · Couleur : ' +
+    gamePrompt.textContent = 'Forme cible : ' + forme.nom + ' (Espace) · Couleur cible : ' +
         couleur.nom + ' (clic uniquement)';
 }
 
@@ -771,21 +803,8 @@ function preparerCiblesMancheT3A() {
     actualiserLibellesCiblesT3A();
 }
 
-function creerStimulusT3A(debut) {
-    const formesDisponibles = FORMES.filter(option => option.id !== formeT3AActuelle);
-    const forme = formesDisponibles[Math.floor(Math.random() * formesDisponibles.length)];
-    formeT3AActuelle = forme.id;
-    const couleurCible = COULEURS.find(option => option.nom === couleurCibleT3A);
-    const couleursNonCibles = COULEURS.filter(option => option.nom !== couleurCibleT3A);
-    couleurT3AActuelle = Math.random() < 0.2
-        ? couleurCible
-        : couleursNonCibles[Math.floor(Math.random() * couleursNonCibles.length)];
-    reponseFormeT3A = false;
-    reponseCouleurT3A = false;
-    debutStimulusT3A = debut;
-    t3aResponseFeedback.textContent = '';
-    t3aResponseFeedback.className = '';
-
+function afficherFormeT3A(formeId) {
+    const forme = FORMES.find(option => option.id === formeId);
     t3aLeftStimulus.innerHTML = '';
     const icone = document.createElement('span');
     icone.className = 'shape-icon ' + forme.classe;
@@ -795,8 +814,49 @@ function creerStimulusT3A(debut) {
         'aria-label',
         forme.id === formeCibleT3A
             ? 'Cible forme ' + forme.nom.toLocaleLowerCase('fr-FR')
-            : 'Forme non cible'
+            : 'Forme non cible ' + forme.nom.toLocaleLowerCase('fr-FR')
     );
+}
+
+function preparerStimulusFormeT3A(debut) {
+    const formesNonCibles = FORMES.filter(option => option.id !== formeCibleT3A);
+    formeT3ARepos = formesNonCibles[Math.floor(Math.random() * formesNonCibles.length)].id;
+    formeT3AActuelle = formeT3ARepos;
+    formeT3AEnPresentation = false;
+    tempsPhaseFormeT3A = 0;
+    debutStimulusFormeT3A = debut;
+    reponseFormeT3A = false;
+    afficherFormeT3A(formeT3AActuelle);
+}
+
+function changerStimulusFormeT3A(debut) {
+    evaluerStimulusFormeT3A();
+    formeT3AEnPresentation = !formeT3AEnPresentation;
+    if (formeT3AEnPresentation) {
+        const formesDisponibles = FORMES.filter(option =>
+            option.id !== formeT3ARepos && option.id !== formeT3AActuelle
+        );
+        const forme = formesDisponibles[Math.floor(Math.random() * formesDisponibles.length)];
+        formeT3AActuelle = forme.id;
+    } else {
+        formeT3AActuelle = formeT3ARepos;
+    }
+    tempsPhaseFormeT3A = 0;
+    debutStimulusFormeT3A = debut;
+    reponseFormeT3A = false;
+    afficherFormeT3A(formeT3AActuelle);
+}
+
+function creerStimulusCouleurT3A(debut) {
+    const couleurCible = COULEURS.find(option => option.nom === couleurCibleT3A);
+    const couleursNonCibles = COULEURS.filter(option => option.nom !== couleurCibleT3A);
+    couleurT3AActuelle = Math.random() < 0.2
+        ? couleurCible
+        : couleursNonCibles[Math.floor(Math.random() * couleursNonCibles.length)];
+    reponseCouleurT3A = false;
+    debutStimulusT3A = debut;
+    t3aResponseFeedback.textContent = '';
+    t3aResponseFeedback.className = '';
 
     t3aRightStimulus.textContent = couleurT3AActuelle.nom;
     t3aRightStimulus.style.backgroundColor = couleurT3AActuelle.css;
@@ -815,14 +875,15 @@ function demarrerMancheT3A() {
 
     phaseT3A = 'manche';
     tempsEcouleMancheT3A = 0;
-    tempsStimulusT3A = 0;
+    tempsStimulusCouleurT3A = 0;
     dernierTickT3A = performance.now();
     progress.textContent = mancheT3AActuelle + '/' + nombreManchesT3A;
     t3aRoundNumber.textContent = mancheT3AActuelle + '/' + nombreManchesT3A;
     t3aRoundTime.textContent = formatTempsT3A(dureeMancheT3A);
     progressLabel.textContent = 'Manche :';
     preparerCiblesMancheT3A();
-    creerStimulusT3A(dernierTickT3A);
+    preparerStimulusFormeT3A(dernierTickT3A);
+    creerStimulusCouleurT3A(dernierTickT3A);
     actualiserAffichageT3A();
 
     if (horlogeT3A === null) {
@@ -835,18 +896,18 @@ function repondreT3A(zone) {
 
     if (zone === 'forme') {
         const cible = formeT3AActuelle === formeCibleT3A;
-        if (cible && reponseFormeT3A) return;
+        if (reponseFormeT3A) return;
         reponseFormeT3A = true;
-        enregistrerReponseT3A(cible);
+        enregistrerReponseT3A('forme', cible);
         t3aResponseFeedback.textContent = cible
             ? 'Bonne détection.'
-            : 'Erreur : clic sur une forme non cible.';
+            : 'Erreur : réponse sur une forme non cible.';
         t3aResponseFeedback.className = cible ? 'good' : 'bad';
     } else {
         const cible = couleurT3AActuelle.nom === couleurCibleT3A;
-        if (cible && reponseCouleurT3A) return;
+        if (reponseCouleurT3A) return;
         reponseCouleurT3A = true;
-        enregistrerReponseT3A(cible);
+        enregistrerReponseT3A('couleur', cible);
         t3aResponseFeedback.textContent = cible
             ? 'Bonne détection.'
             : 'Erreur : clic sur une couleur non cible.';
@@ -854,45 +915,77 @@ function repondreT3A(zone) {
     }
 }
 
-function enregistrerReponseT3A(cible) {
+function enregistrerReponseT3A(tache, cible) {
     decisionsT3A++;
+    if (tache === 'forme') decisionsFormeT3A++;
+    else decisionsCouleurT3A++;
     if (cible) {
         detectionsT3A++;
-        reactionsT3A.push(Math.round(performance.now() - debutStimulusT3A));
+        if (tache === 'forme') reussitesFormeT3A++;
+        else reussitesCouleurT3A++;
+        const debut = tache === 'forme' ? debutStimulusFormeT3A : debutStimulusT3A;
+        reactionsT3A.push(Math.round(performance.now() - debut));
     } else {
         faussesAlertesT3A++;
+        if (tache === 'forme') {
+            faussesAlertesFormeT3A++;
+            erreursFormeT3A++;
+        } else {
+            faussesAlertesCouleurT3A++;
+            erreursCouleurT3A++;
+        }
     }
-    t3aLiveScore.textContent = 'Réussites : ' + detectionsT3A +
-        ' · Erreurs : ' + totalErreursT3A();
+    actualiserScoreT3A();
 }
 
-function evaluerStimulusT3A() {
-    const cibleForme = formeT3AActuelle === formeCibleT3A;
-    const cibleCouleur = couleurT3AActuelle.nom === couleurCibleT3A;
-
-    if (cibleForme) {
+function evaluerStimulusFormeT3A() {
+    if (formeT3AEnPresentation && formeT3AActuelle === formeCibleT3A) {
+        ciblesFormeT3A++;
         ciblesT3A++;
-        if (!reponseFormeT3A) ciblesManqueesT3A++;
     }
+}
+
+function evaluerStimulusCouleurT3A() {
+    const cibleCouleur = couleurT3AActuelle.nom === couleurCibleT3A;
 
     if (cibleCouleur) {
         ciblesT3A++;
         if (!reponseCouleurT3A) {
             ciblesManqueesT3A++;
             ciblesCouleurManqueesT3A++;
+            erreursCouleurT3A++;
         }
     }
 
-    t3aLiveScore.textContent = 'Réussites : ' + detectionsT3A +
-        ' · Erreurs : ' + totalErreursT3A();
+    actualiserScoreT3A();
+}
+
+function actualiserScoreT3A() {
+    t3aLiveScore.textContent = resumeTacheT3A(
+        'Formes', reussitesFormeT3A, erreursFormeT3A
+    ) + ' · ' + resumeTacheT3A(
+        'Couleurs', reussitesCouleurT3A, erreursCouleurT3A
+    );
+}
+
+function resumeTacheT3A(nom, reussites, erreurs) {
+    return nom + ' : ' + reussites +
+        (reussites > 1 ? ' réussites' : ' réussite') + ' / ' +
+        erreurs + (erreurs > 1 ? ' erreurs' : ' erreur');
 }
 
 function totalErreursT3A() {
-    return faussesAlertesT3A + ciblesCouleurManqueesT3A;
+    return erreursFormeT3A + erreursCouleurT3A;
+}
+
+function precisionT3ATache(reussites, erreurs) {
+    const essais = reussites + erreurs;
+    return essais ? Math.round((reussites / essais) * 100) : null;
 }
 
 function terminerMancheT3A() {
-    evaluerStimulusT3A();
+    evaluerStimulusFormeT3A();
+    evaluerStimulusCouleurT3A();
     if (mancheT3AActuelle >= nombreManchesT3A) {
         arreterHorlogeT3A();
         phaseT3A = 'inactive';
@@ -925,7 +1018,8 @@ function tickT3A() {
 
     if (phaseT3A === 'manche') {
         tempsEcouleMancheT3A += delta;
-        tempsStimulusT3A += delta;
+        tempsStimulusCouleurT3A += delta;
+        tempsPhaseFormeT3A += delta;
         const restant = Math.max(0, Math.ceil(
             (dureeMancheT3A * 1000 - tempsEcouleMancheT3A) / 1000
         ));
@@ -935,10 +1029,17 @@ function tickT3A() {
             terminerMancheT3A();
             return;
         }
-        if (tempsStimulusT3A >= 800) {
-            tempsStimulusT3A -= 800;
-            evaluerStimulusT3A();
-            creerStimulusT3A(maintenant - tempsStimulusT3A);
+        if (tempsStimulusCouleurT3A >= INTERVALLE_COULEUR_T3A) {
+            tempsStimulusCouleurT3A -= INTERVALLE_COULEUR_T3A;
+            evaluerStimulusCouleurT3A();
+            creerStimulusCouleurT3A(maintenant - tempsStimulusCouleurT3A);
+        }
+        const dureePhaseForme = formeT3AEnPresentation
+            ? DUREE_FORME_T3A
+            : PAUSE_FORME_T3A;
+        if (tempsPhaseFormeT3A >= dureePhaseForme) {
+            tempsPhaseFormeT3A -= dureePhaseForme;
+            changerStimulusFormeT3A(maintenant - tempsPhaseFormeT3A);
         }
     } else if (phaseT3A === 'pause') {
         tempsEcoulePauseT3A += delta;
@@ -1277,9 +1378,13 @@ function finDuJeu() {
     const estT3A = jeuActif === 't3a';
     const echecs = estNBack ? echecsNBack : nbTours - score;
     const essaisEval = estNBack ? essaisComptabilisesNBack : nbTours;
+    const precisionFormeT3A = precisionT3ATache(reussitesFormeT3A, erreursFormeT3A);
+    const precisionCouleurT3A = precisionT3ATache(reussitesCouleurT3A, erreursCouleurT3A);
+    const precisionsT3A = [precisionFormeT3A, precisionCouleurT3A]
+        .filter(precisionTache => precisionTache !== null);
     const precision = estT3A
-        ? decisionsT3A
-            ? Math.round((detectionsT3A / decisionsT3A) * 100)
+        ? precisionsT3A.length
+            ? Math.round(precisionsT3A.reduce((total, valeur) => total + valeur, 0) / precisionsT3A.length)
             : 0
         : essaisEval
             ? Math.round((score / essaisEval) * 100)
@@ -1301,23 +1406,24 @@ function finDuJeu() {
     resultPlayer.textContent = '👤 ' + joueur;
     resultGame.textContent = '🎮 ' + libelleJeuActif();
     resultScore.textContent = estT3A
-        ? '🎯 Cibles détectées : ' + detectionsT3A + '/' + ciblesT3A
+        ? resumeTacheT3A('Formes', reussitesFormeT3A, erreursFormeT3A) +
+            ' · ' + resumeTacheT3A('Couleurs', reussitesCouleurT3A, erreursCouleurT3A)
         : estNBack
             ? '🎯 Réussites : ' + score + '/' + essaisEval
             : '🎯 Score : ' + score + '/' + nbTours;
     resultAccuracy.textContent = estT3A
-        ? '📊 Précision des clics : ' + precision + '% (' + detectionsT3A +
-            '/' + decisionsT3A + ' clics sur cible)'
+        ? '📊 Précision — formes : ' +
+            (precisionFormeT3A === null ? '—' : precisionFormeT3A + '%') +
+            ' · couleurs : ' +
+            (precisionCouleurT3A === null ? '—' : precisionCouleurT3A + '%')
         : estNBack
             ? '📊 Taux de réussite : ' + precision + '%'
             : '📊 Précision : ' + precision + '%';
     resultFailure.classList.toggle('hidden', !estNBack && !estT3A);
     resultFailure.textContent = estT3A
-        ? '⚠ Erreurs totales : ' + totalErreursT3A() +
-            ' — Clics hors cible : ' + faussesAlertesT3A +
-            ' — Cibles couleur ignorées : ' + ciblesCouleurManqueesT3A +
-            ' — Formes cibles manquées, non comptées comme erreurs : ' +
-            (ciblesManqueesT3A - ciblesCouleurManqueesT3A)
+        ? '⚠ Erreurs — formes : ' + erreursFormeT3A +
+            ' · couleurs : ' + erreursCouleurT3A +
+            ' (dont ' + ciblesCouleurManqueesT3A + ' cibles couleur ignorées)'
         : estNBack
             ? '📉 Échecs : ' + echecs + '/' + essaisEval + ' — Taux d’échec : ' + tauxEchec + '%'
             : '';
@@ -1384,9 +1490,20 @@ function finDuJeu() {
         partie.faussesAlertes = faussesAlertesT3A;
         partie.erreurs = totalErreursT3A();
         partie.decisions = decisionsT3A;
+        partie.ciblesForme = ciblesFormeT3A;
+        partie.reussitesForme = reussitesFormeT3A;
+        partie.erreursForme = erreursFormeT3A;
+        partie.reussitesCouleur = reussitesCouleurT3A;
+        partie.erreursCouleur = erreursCouleurT3A;
+        partie.faussesAlertesForme = faussesAlertesFormeT3A;
+        partie.faussesAlertesCouleur = faussesAlertesCouleurT3A;
+        partie.decisionsForme = decisionsFormeT3A;
+        partie.decisionsCouleur = decisionsCouleurT3A;
+        partie.precisionForme = precisionFormeT3A;
+        partie.precisionCouleur = precisionCouleurT3A;
         partie.changementFormeCible = changerFormeCibleT3A;
         partie.changementCouleurCible = changerCouleurCibleT3A;
-        partie.versionScoringT3A = 3;
+        partie.versionScoringT3A = 4;
     }
     sauvegarderPartie(partie);
 }
@@ -1455,7 +1572,15 @@ btnExportCsv.addEventListener('click', () => {
         ]
         : estT3A
             ? [
-                    ['Joueur', 'Jeu', 'Date', 'Manches', 'Durée par manche (s)', 'Pause (s)', 'Cibles détectées', 'Cibles', 'Formes cibles manquées', 'Cibles couleur ignorées', 'Fausses alertes', 'Erreurs totales', 'Clics évalués', 'Changement de forme cible', 'Changement de couleur cible', 'Précision des clics (%)', 'Réaction moyenne (ms)'],
+                    [
+                        'Joueur', 'Jeu', 'Date', 'Manches', 'Durée par manche (s)', 'Pause (s)',
+                        'Cibles détectées', 'Cibles', 'Formes cibles manquées',
+                        'Cibles couleur ignorées', 'Fausses alertes', 'Erreurs totales',
+                        'Réponses évaluées', 'Réussites formes', 'Erreurs formes',
+                        'Réussites couleurs', 'Erreurs couleurs', 'Précision formes (%)',
+                        'Précision couleurs (%)', 'Changement de forme cible',
+                        'Changement de couleur cible', 'Précision moyenne (%)', 'Réaction moyenne (ms)'
+                    ],
                 ...parties.map(partie => [
                     nom,
                     JEUX[jeuActif].nom,
@@ -1465,11 +1590,17 @@ btnExportCsv.addEventListener('click', () => {
                     partie.dureePause,
                     partie.detections,
                     partie.cibles,
-                    partie.versionScoringT3A >= 3 ? partie.ciblesFormeManquees : '',
+                    partie.versionScoringT3A === 3 ? partie.ciblesFormeManquees : '',
                     partie.versionScoringT3A >= 3 ? partie.ciblesCouleurManquees : '',
                     partie.faussesAlertes,
                     partie.versionScoringT3A >= 3 ? partie.erreurs : '',
                     partie.decisions,
+                    partie.versionScoringT3A >= 4 ? partie.reussitesForme : '',
+                    partie.versionScoringT3A >= 4 ? partie.erreursForme : '',
+                    partie.versionScoringT3A >= 4 ? partie.reussitesCouleur : '',
+                    partie.versionScoringT3A >= 4 ? partie.erreursCouleur : '',
+                    partie.versionScoringT3A >= 4 ? partie.precisionForme : '',
+                    partie.versionScoringT3A >= 4 ? partie.precisionCouleur : '',
                     partie.changementFormeCible == null ? '' : partie.changementFormeCible ? 'Oui' : 'Non',
                     partie.changementCouleurCible == null ? '' : partie.changementCouleurCible ? 'Oui' : 'Non',
                     partie.precision,
@@ -1521,23 +1652,24 @@ function afficherStats(nom, reinitialiserFiltre) {
     statBestLabel.textContent = estT3A ? 'meilleure précision' : 'meilleur score';
     statAvgAccuracyLabel.textContent = estNBack
         ? 'taux de réussite moyen (essais évalués)'
-        : estT3A ? 'précision moyenne des clics' : 'précision moyenne';
+        : estT3A ? 'précision moyenne des deux tâches' : 'précision moyenne';
     statAvgReactionLabel.textContent = estNBack
         ? 'taux d’échec moyen (essais évalués)'
         : estT3A ? 'temps moyen de détection' : 'réaction moyenne';
     statLatestTrendLabel.textContent = estNBack
         ? 'taux d’échec de la dernière partie'
-        : estT3A ? 'erreurs de la dernière partie' : 'tendance de la dernière partie';
+        : estT3A ? 'erreurs formes / couleurs de la dernière partie' : 'tendance de la dernière partie';
     statsRoundFilterLabel.textContent = estT3A
         ? 'Filtrer par nombre de manches :'
         : 'Filtrer par nombre de tours :';
+    statsScoreHeader.textContent = estT3A ? 'Réussites / erreurs' : 'Score';
     statsPrecisionHeader.textContent = estNBack
         ? 'Taux de réussite (évalués)'
-        : estT3A ? 'Précision des clics' : 'Précision';
+        : estT3A ? 'Précision formes / couleurs' : 'Précision';
     statsReactionHeader.textContent = estNBack ? 'Taux d’échec (évalués)' : 'Réaction';
     statsTrendHeader.textContent = estNBack
         ? 'Non-cibles ignorées'
-        : estT3A ? 'Erreurs' : 'Tendance';
+        : estT3A ? 'Erreurs formes / couleurs' : 'Tendance';
 
     const toutesLesParties = partiesDe(nom);
 
@@ -1622,7 +1754,10 @@ function afficherStats(nom, reinitialiserFiltre) {
         statAvgReaction.textContent = reacMoyenne === null ? '—' : reacMoyenne + ' ms';
         if (estT3A) {
             const dernierePartie = parties[parties.length - 1];
-            statLatestTrend.textContent = dernierePartie.versionScoringT3A >= 3 &&
+            statLatestTrend.textContent = dernierePartie.versionScoringT3A >= 4
+                ? 'Formes ' + dernierePartie.erreursForme +
+                    ' · Couleurs ' + dernierePartie.erreursCouleur
+                : dernierePartie.versionScoringT3A >= 3 &&
                 Number.isFinite(dernierePartie.erreurs)
                 ? String(dernierePartie.erreurs)
                 : '—';
@@ -1645,13 +1780,19 @@ function afficherStats(nom, reinitialiserFiltre) {
         tdDate.textContent = p.date;
         const tdScore = document.createElement('td');
         tdScore.textContent = estT3A
-            ? p.detections + '/' + p.cibles + ' détectées · ' +
-                (p.ciblesManquees == null ? '—' : p.ciblesManquees) + ' manquées'
+            ? p.versionScoringT3A >= 4
+                ? 'Formes ' + p.reussitesForme + '/' + p.erreursForme +
+                    ' · Couleurs ' + p.reussitesCouleur + '/' + p.erreursCouleur
+                : p.detections + '/' + p.cibles + ' détectées · ' +
+                    (p.ciblesManquees == null ? '—' : p.ciblesManquees) + ' manquées'
             : estNBack
                 ? p.score + '/' + p.essaisComptabilises
                 : p.score + '/' + p.tours;
         const tdPrecision = document.createElement('td');
-        tdPrecision.textContent = p.precision + '%';
+        tdPrecision.textContent = estT3A && p.versionScoringT3A >= 4
+            ? 'F ' + (p.precisionForme == null ? '—' : p.precisionForme + '%') +
+                ' · C ' + (p.precisionCouleur == null ? '—' : p.precisionCouleur + '%')
+            : p.precision + '%';
         const tdReaction = document.createElement('td');
         tdReaction.textContent = estNBack
             ? p.tauxEchec + '%'
@@ -1660,9 +1801,11 @@ function afficherStats(nom, reinitialiserFiltre) {
         tdTrend.textContent = estNBack
             ? p.nonCiblesIgnorees
             : estT3A
-                ? p.versionScoringT3A >= 3 && Number.isFinite(p.erreurs)
-                    ? p.erreurs
-                    : '—'
+                ? p.versionScoringT3A >= 4
+                    ? p.erreursForme + ' / ' + p.erreursCouleur
+                    : p.versionScoringT3A >= 3 && Number.isFinite(p.erreurs)
+                        ? p.erreurs
+                        : '—'
                 : libelleTendanceReaction(p.tendanceReaction);
 
         tr.appendChild(tdDate);
