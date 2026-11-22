@@ -12,8 +12,9 @@ const FORMES = [
     { nom: 'ÉTOILE', id: 'etoile', classe: 'shape-star' },
     { nom: 'TRIANGLE', id: 'triangle', classe: 'shape-triangle' }
 ];
-const DUREE_FORME_T3A = 1200;
-const PAUSE_FORME_T3A = 800;
+const INTERVALLE_FORME_T3A = 15000;
+const DUREE_FORME_T3A = 3000;
+const PAUSE_FORME_T3A = INTERVALLE_FORME_T3A - DUREE_FORME_T3A;
 const INTERVALLE_COULEUR_T3A = 800;
 const JEUX = {
     stroop: {
@@ -49,7 +50,7 @@ const JEUX = {
     t3a: {
         nom: 'Attention partagée (inspirée du T3A)',
         titreResultats: 'Résultats de l’attention partagée',
-        instructions: 'Surveillez les deux zones en même temps. Pour les formes, appuyez sur Espace lorsque la forme cible apparaît; une absence de réponse n’est pas comptée. Une forme non-cible fixe réapparaît entre les formes présentées pendant 1 200 ms. Pour les couleurs, cliquez sur la cible; une cible couleur ignorée compte comme erreur. Les résultats des deux tâches sont séparés.',
+        instructions: 'Surveillez les deux zones en même temps. Pour les formes, une forme non-cible fixe est affichée; toutes les 15 secondes, une forme aléatoire la remplace pendant 3 secondes, puis la forme fixe revient. Espace sur une cible ou absence d’Espace sur une non-cible = réussite; Espace sur une non-cible ou absence d’Espace sur une cible = erreur. Pour les couleurs, cliquez sur la cible; une cible couleur ignorée compte comme erreur. Les résultats des deux tâches sont séparés.',
         prompt: 'Espace pour la forme cible · Clic pour la couleur cible.'
     }
 };
@@ -211,6 +212,7 @@ let formeT3AActuelle = '';
 let formeT3ARepos = '';
 let formeT3AEnPresentation = false;
 let tempsPhaseFormeT3A = 0;
+let dureeReposFormeT3A = INTERVALLE_FORME_T3A;
 let debutStimulusFormeT3A = 0;
 let couleurT3AActuelle = null;
 let reponseFormeT3A = false;
@@ -358,7 +360,7 @@ function afficherConfigurationJeu() {
     t3aOptions.hidden = jeuActif !== 't3a';
     roundsConfig.hidden = jeuActif === 't3a';
     if (jeuActif === 't3a') {
-        gameInstructions.textContent += ' La forme fixe est toujours différente de la cible; elle réapparaît pendant 800 ms entre les formes aléatoires présentées pendant 1 200 ms. Les options cochées font varier les cibles entre les manches.';
+        gameInstructions.textContent += ' Les options cochées font varier les cibles entre les manches.';
     }
     if (jeuActif !== 't3a') roundsInput.value = toursParJeu[jeuActif];
     btnBackGames.textContent = jeuActif === 'formes'
@@ -824,6 +826,7 @@ function preparerStimulusFormeT3A(debut) {
     formeT3AActuelle = formeT3ARepos;
     formeT3AEnPresentation = false;
     tempsPhaseFormeT3A = 0;
+    dureeReposFormeT3A = INTERVALLE_FORME_T3A;
     debutStimulusFormeT3A = debut;
     reponseFormeT3A = false;
     afficherFormeT3A(formeT3AActuelle);
@@ -831,15 +834,17 @@ function preparerStimulusFormeT3A(debut) {
 
 function changerStimulusFormeT3A(debut) {
     evaluerStimulusFormeT3A();
-    formeT3AEnPresentation = !formeT3AEnPresentation;
     if (formeT3AEnPresentation) {
+        formeT3AEnPresentation = false;
+        dureeReposFormeT3A = PAUSE_FORME_T3A;
+        formeT3AActuelle = formeT3ARepos;
+    } else {
+        formeT3AEnPresentation = true;
         const formesDisponibles = FORMES.filter(option =>
             option.id !== formeT3ARepos && option.id !== formeT3AActuelle
         );
         const forme = formesDisponibles[Math.floor(Math.random() * formesDisponibles.length)];
         formeT3AActuelle = forme.id;
-    } else {
-        formeT3AActuelle = formeT3ARepos;
     }
     tempsPhaseFormeT3A = 0;
     debutStimulusFormeT3A = debut;
@@ -939,10 +944,22 @@ function enregistrerReponseT3A(tache, cible) {
 }
 
 function evaluerStimulusFormeT3A() {
-    if (formeT3AEnPresentation && formeT3AActuelle === formeCibleT3A) {
+    const cible = formeT3AActuelle === formeCibleT3A;
+    if (formeT3AEnPresentation && cible) {
         ciblesFormeT3A++;
         ciblesT3A++;
     }
+    if (reponseFormeT3A) return;
+
+    decisionsT3A++;
+    decisionsFormeT3A++;
+    if (cible) {
+        erreursFormeT3A++;
+    } else {
+        detectionsT3A++;
+        reussitesFormeT3A++;
+    }
+    actualiserScoreT3A();
 }
 
 function evaluerStimulusCouleurT3A() {
@@ -1036,7 +1053,7 @@ function tickT3A() {
         }
         const dureePhaseForme = formeT3AEnPresentation
             ? DUREE_FORME_T3A
-            : PAUSE_FORME_T3A;
+            : dureeReposFormeT3A;
         if (tempsPhaseFormeT3A >= dureePhaseForme) {
             tempsPhaseFormeT3A -= dureePhaseForme;
             changerStimulusFormeT3A(maintenant - tempsPhaseFormeT3A);
@@ -1482,11 +1499,13 @@ function finDuJeu() {
         partie.nombreManches = nombreManchesT3A;
         partie.dureeManche = dureeMancheT3A;
         partie.dureePause = dureePauseT3A;
+        partie.intervalleForme = INTERVALLE_FORME_T3A / 1000;
+        partie.dureeStimulusForme = DUREE_FORME_T3A / 1000;
         partie.cibles = ciblesT3A;
         partie.detections = detectionsT3A;
-        partie.ciblesManquees = ciblesManqueesT3A;
+        partie.ciblesFormeManquees = erreursFormeT3A - faussesAlertesFormeT3A;
+        partie.ciblesManquees = ciblesCouleurManqueesT3A + partie.ciblesFormeManquees;
         partie.ciblesCouleurManquees = ciblesCouleurManqueesT3A;
-        partie.ciblesFormeManquees = ciblesManqueesT3A - ciblesCouleurManqueesT3A;
         partie.faussesAlertes = faussesAlertesT3A;
         partie.erreurs = totalErreursT3A();
         partie.decisions = decisionsT3A;
@@ -1503,7 +1522,7 @@ function finDuJeu() {
         partie.precisionCouleur = precisionCouleurT3A;
         partie.changementFormeCible = changerFormeCibleT3A;
         partie.changementCouleurCible = changerCouleurCibleT3A;
-        partie.versionScoringT3A = 4;
+        partie.versionScoringT3A = 5;
     }
     sauvegarderPartie(partie);
 }
@@ -1574,7 +1593,8 @@ btnExportCsv.addEventListener('click', () => {
             ? [
                     [
                         'Joueur', 'Jeu', 'Date', 'Manches', 'Durée par manche (s)', 'Pause (s)',
-                        'Cibles détectées', 'Cibles', 'Formes cibles manquées',
+                        'Intervalle formes (s)', 'Durée stimulus forme (s)',
+                        'Réussites cumulées', 'Cibles', 'Formes cibles manquées',
                         'Cibles couleur ignorées', 'Fausses alertes', 'Erreurs totales',
                         'Réponses évaluées', 'Réussites formes', 'Erreurs formes',
                         'Réussites couleurs', 'Erreurs couleurs', 'Précision formes (%)',
@@ -1588,9 +1608,13 @@ btnExportCsv.addEventListener('click', () => {
                     partie.nombreManches,
                     partie.dureeManche,
                     partie.dureePause,
+                    partie.versionScoringT3A >= 5 ? partie.intervalleForme : '',
+                    partie.versionScoringT3A >= 5 ? partie.dureeStimulusForme : '',
                     partie.detections,
                     partie.cibles,
-                    partie.versionScoringT3A === 3 ? partie.ciblesFormeManquees : '',
+                    partie.versionScoringT3A === 3 || partie.versionScoringT3A >= 5
+                        ? partie.ciblesFormeManquees
+                        : '',
                     partie.versionScoringT3A >= 3 ? partie.ciblesCouleurManquees : '',
                     partie.faussesAlertes,
                     partie.versionScoringT3A >= 3 ? partie.erreurs : '',
