@@ -48,8 +48,8 @@ const JEUX = {
         prompt: 'Appuyez sur « Identique » pour une cible; une non-cible ignorée n’est pas comptée.'
     },
     t3a: {
-        nom: 'Attention partagée (inspirée du T3A)',
-        titreResultats: 'Résultats de l’attention partagée',
+        nom: 'Double Tâche',
+        titreResultats: 'Résultats de la Double Tâche',
         instructions: 'Surveillez les deux zones en même temps. Pour les formes, une forme non-cible fixe est affichée; toutes les 15 secondes, une forme aléatoire la remplace pendant 3 secondes, puis la forme fixe revient. Espace sur une cible ou absence d’Espace sur une non-cible = réussite; Espace sur une non-cible ou absence d’Espace sur une cible = erreur. Pour les couleurs : clic sur la cible = réussite; clic sur une non-cible = erreur; cible ignorée = erreur; non-cible ignorée = non comptabilisée. Les résultats des deux tâches sont séparés.',
         prompt: 'Espace pour la forme cible · Clic pour la couleur cible.'
     }
@@ -426,7 +426,7 @@ nbackDurationInput.addEventListener('change', () => {
 btnModeBack.onclick = () => {
     screenFormMode.classList.add('hidden');
     screenHome.classList.remove('hidden');
-    document.title = 'Jeux de réflexion';
+    document.title = 'Entraînement cognitif';
 };
 
 btnBackGames.onclick = () => {
@@ -436,7 +436,7 @@ btnBackGames.onclick = () => {
         document.title = JEUX.formes.nom;
     } else {
         screenHome.classList.remove('hidden');
-        document.title = 'Jeux de réflexion';
+        document.title = 'Entraînement cognitif';
     }
     historyBox.classList.add('hidden');
 };
@@ -634,7 +634,7 @@ btnHome.onclick = () => {
     screenFormMode.classList.add('hidden');
     screenStart.classList.add('hidden');
     historyBox.classList.add('hidden');
-    document.title = 'Jeux de réflexion';
+    document.title = 'Entraînement cognitif';
 };
 
 // PUBLIC_DEPLOYMENT_REMOVE_EMAIL_HANDLER_START
