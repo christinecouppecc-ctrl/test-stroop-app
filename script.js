@@ -1002,7 +1002,9 @@ function precisionT3ATache(reussites, erreurs) {
 
 function terminerMancheT3A() {
     evaluerStimulusFormeT3A();
-    evaluerStimulusCouleurT3A();
+    if (tempsStimulusCouleurT3A >= INTERVALLE_COULEUR_T3A) {
+        evaluerStimulusCouleurT3A();
+    }
     if (mancheT3AActuelle >= nombreManchesT3A) {
         arreterHorlogeT3A();
         phaseT3A = 'inactive';
@@ -1522,7 +1524,7 @@ function finDuJeu() {
         partie.precisionCouleur = precisionCouleurT3A;
         partie.changementFormeCible = changerFormeCibleT3A;
         partie.changementCouleurCible = changerCouleurCibleT3A;
-        partie.versionScoringT3A = 5;
+        partie.versionScoringT3A = 6;
     }
     sauvegarderPartie(partie);
 }
