@@ -56,8 +56,8 @@ const JEUX = {
     'test-t3a': {
         nom: 'Test T3A',
         titreResultats: 'Résultats du Test T3A',
-        instructions: 'Chaque séquence dure 1 min 30. Au palier 1, appuyez sur 9 si le stimulus est identique à celui du N-Back demandé, sinon sur 0. Au palier 2, surveillez aussi le carré : A pour rouge, Z pour jaune. Au palier 3, exécutez aussi chaque consigne centrale avec la touche indiquée. Chaque tâche est évaluée séparément; une touche incorrecte ou l’absence de réponse est une erreur.',
-        prompt: 'Répondez avec les touches 9, 0, A, Z et 1, 2, 3 selon les tâches affichées.'
+        instructions: 'Les consignes de chaque palier sont détaillées ci-dessous.',
+        prompt: 'N-Back : MAJ+9 identique, MAJ+0 différent · Carré : A rouge, Z jaune · Consigne : MAJ+1, 2 ou 3.'
     }
 };
 
@@ -97,6 +97,7 @@ const screenStats = document.getElementById('screen-stats');
 const gameConfigTitle = document.getElementById('game-config-title');
 const gameInstructions = document.getElementById('game-instructions');
 const gamePrompt = document.getElementById('game-prompt');
+const testT3aInstructions = document.getElementById('test-t3a-instructions');
 const gameCards = document.querySelectorAll('#screen-home .game-card[data-game], #screen-multitache .game-card[data-game]');
 const menuCards = document.querySelectorAll('.game-card[data-menu]');
 const screenMultitache = document.getElementById('screen-multitache');
@@ -269,6 +270,14 @@ let decisionsFormeT3A = 0;
 let decisionsCouleurT3A = 0;
 let reactionsT3A = [];
 const DUREE_SEQUENCE_TEST_T3A = 90;
+const DUREE_AFFICHAGE_COULEUR_TEST_T3A = 2000;
+const DUREE_AFFICHAGE_CONSIGNE_TEST_T3A = 2000;
+const INTERVALLE_COULEUR_MIN_TEST_T3A = 4500;
+const INTERVALLE_COULEUR_MAX_TEST_T3A = 6500;
+const INTERVALLE_CONSIGNE_MIN_TEST_T3A = 6500;
+const INTERVALLE_CONSIGNE_MAX_TEST_T3A = 8500;
+const DECALAGE_COULEUR_TEST_T3A = 1200;
+const DECALAGE_CONSIGNE_TEST_T3A = 2400;
 let paliersTestT3A = [1, 2, 3];
 let nombreSequencesTestT3A = { 1: 1, 2: 4, 3: 4 };
 let dureesStimuliTestT3A = { 1: 3, 2: 3, 3: 3 };
@@ -286,8 +295,14 @@ let cibleNBackTestT3A = false;
 let reponseNBackTestT3A = false;
 let couleurTestT3A = '';
 let reponseCouleurTestT3A = false;
+let couleurActiveTestT3A = false;
+let prochaineCouleurTestT3A = 0;
+let finCouleurTestT3A = 0;
 let commandeTestT3A = '';
 let reponseCommandeTestT3A = false;
+let commandeActiveTestT3A = false;
+let prochaineCommandeTestT3A = 0;
+let finCommandeTestT3A = 0;
 let scoresTestT3A = null;
 let questionVerrouillee = false;
 let timeoutQuestion = null;
@@ -454,6 +469,8 @@ function afficherConfigurationJeu() {
     gamePrompt.textContent = jeuActif === 'nback'
         ? configuration.prompt.replace('N essais', 'N-' + niveauNBack + ' essais')
         : configuration.prompt;
+    gameInstructions.classList.toggle('hidden', jeuActif === 'test-t3a');
+    testT3aInstructions.classList.toggle('hidden', jeuActif !== 'test-t3a');
     nbackOptions.hidden = jeuActif !== 'nback';
     t3aOptions.hidden = jeuActif !== 't3a';
     testT3aOptions.hidden = jeuActif !== 'test-t3a';
@@ -1384,19 +1401,63 @@ function creerStimulusNBackTestT3A() {
     testT3aNbackStimulus.textContent = stimulusNBackTestT3A;
 }
 
-function creerStimulusCouleurTestT3A() {
+function intervalleAleatoireTestT3A(minimum, maximum) {
+    return Math.round(minimum + Math.random() * (maximum - minimum));
+}
+
+function creerStimulusCouleurTestT3A(tempsSequence) {
     couleurTestT3A = Math.random() < 0.5 ? 'rouge' : 'jaune';
     reponseCouleurTestT3A = false;
+    couleurActiveTestT3A = true;
+    finCouleurTestT3A = tempsSequence + DUREE_AFFICHAGE_COULEUR_TEST_T3A;
+    prochaineCouleurTestT3A = tempsSequence + intervalleAleatoireTestT3A(
+        INTERVALLE_COULEUR_MIN_TEST_T3A,
+        INTERVALLE_COULEUR_MAX_TEST_T3A
+    );
+    testT3aColorPanel.classList.remove('hidden');
     testT3aColorStimulus.style.backgroundColor = couleurTestT3A === 'rouge'
         ? '#e74c3c'
         : '#f1c40f';
     testT3aColorStimulus.setAttribute('aria-label', 'Carré ' + couleurTestT3A);
 }
 
-function creerStimulusCommandeTestT3A() {
+function actualiserStimulusCouleurTestT3A(tempsSequence) {
+    if (couleurActiveTestT3A && tempsSequence >= finCouleurTestT3A) {
+        if (!reponseCouleurTestT3A) enregistrerEssaiTestT3A('carre', false);
+        couleurActiveTestT3A = false;
+        testT3aColorPanel.classList.add('hidden');
+    }
+
+    if (!couleurActiveTestT3A && tempsSequence >= prochaineCouleurTestT3A &&
+        tempsSequence + DUREE_AFFICHAGE_COULEUR_TEST_T3A <= DUREE_SEQUENCE_TEST_T3A * 1000) {
+        creerStimulusCouleurTestT3A(tempsSequence);
+    }
+}
+
+function creerStimulusCommandeTestT3A(tempsSequence) {
     commandeTestT3A = String(1 + Math.floor(Math.random() * 3));
     reponseCommandeTestT3A = false;
+    commandeActiveTestT3A = true;
+    finCommandeTestT3A = tempsSequence + DUREE_AFFICHAGE_CONSIGNE_TEST_T3A;
+    prochaineCommandeTestT3A = tempsSequence + intervalleAleatoireTestT3A(
+        INTERVALLE_CONSIGNE_MIN_TEST_T3A,
+        INTERVALLE_CONSIGNE_MAX_TEST_T3A
+    );
+    testT3aCommand.classList.remove('hidden');
     testT3aCommand.textContent = 'APPUYER SUR ' + commandeTestT3A;
+}
+
+function actualiserStimulusCommandeTestT3A(tempsSequence) {
+    if (commandeActiveTestT3A && tempsSequence >= finCommandeTestT3A) {
+        if (!reponseCommandeTestT3A) enregistrerEssaiTestT3A('consigne', false);
+        commandeActiveTestT3A = false;
+        testT3aCommand.classList.add('hidden');
+    }
+
+    if (!commandeActiveTestT3A && tempsSequence >= prochaineCommandeTestT3A &&
+        tempsSequence + DUREE_AFFICHAGE_CONSIGNE_TEST_T3A <= DUREE_SEQUENCE_TEST_T3A * 1000) {
+        creerStimulusCommandeTestT3A(tempsSequence);
+    }
 }
 
 function actualiserScoreTestT3A() {
@@ -1411,12 +1472,6 @@ function actualiserScoreTestT3A() {
 
 function evaluerFenetreTestT3A() {
     if (!reponseNBackTestT3A) enregistrerEssaiTestT3A('nback', false);
-    if (sequencesTestT3A[indexSequenceTestT3A] >= 2 && !reponseCouleurTestT3A) {
-        enregistrerEssaiTestT3A('carre', false);
-    }
-    if (sequencesTestT3A[indexSequenceTestT3A] >= 3 && !reponseCommandeTestT3A) {
-        enregistrerEssaiTestT3A('consigne', false);
-    }
 }
 
 function repondreNBackTestT3A(touche) {
@@ -1426,13 +1481,15 @@ function repondreNBackTestT3A(touche) {
 }
 
 function repondreCouleurTestT3A(touche) {
-    if (reponseCouleurTestT3A || (touche !== 'a' && touche !== 'z')) return;
+    if (!couleurActiveTestT3A || reponseCouleurTestT3A ||
+        (touche !== 'a' && touche !== 'z')) return;
     reponseCouleurTestT3A = true;
     enregistrerEssaiTestT3A('carre', touche === (couleurTestT3A === 'rouge' ? 'a' : 'z'));
 }
 
 function repondreCommandeTestT3A(touche) {
-    if (reponseCommandeTestT3A || !['1', '2', '3'].includes(touche)) return;
+    if (!commandeActiveTestT3A || reponseCommandeTestT3A ||
+        !['1', '2', '3'].includes(touche)) return;
     reponseCommandeTestT3A = true;
     enregistrerEssaiTestT3A('consigne', touche === commandeTestT3A);
 }
@@ -1456,12 +1513,19 @@ function demarrerSequenceTestT3A() {
     progress.textContent = (indexSequenceTestT3A + 1) + '/' + sequencesTestT3A.length;
     testT3aTimeLabel.textContent = '1:30';
     testT3aNbackPanel.classList.remove('hidden');
-    testT3aColorPanel.classList.toggle('hidden', palier < 2);
-    testT3aCommand.classList.toggle('hidden', palier < 3);
+    testT3aColorPanel.classList.add('hidden');
+    testT3aCommand.classList.add('hidden');
+    couleurActiveTestT3A = false;
+    commandeActiveTestT3A = false;
+    reponseCouleurTestT3A = false;
+    reponseCommandeTestT3A = false;
+    prochaineCouleurTestT3A = DECALAGE_COULEUR_TEST_T3A +
+        intervalleAleatoireTestT3A(-300, 300);
+    prochaineCommandeTestT3A = DECALAGE_CONSIGNE_TEST_T3A +
+        intervalleAleatoireTestT3A(-400, 400);
     testT3aCommand.textContent = '';
     creerStimulusNBackTestT3A();
-    if (palier >= 2) creerStimulusCouleurTestT3A();
-    if (palier >= 3) creerStimulusCommandeTestT3A();
+    testT3aColorStimulus.style.backgroundColor = 'transparent';
     actualiserScoreTestT3A();
 }
 
@@ -1497,10 +1561,11 @@ function tickTestT3A() {
         tempsFenetreTestT3A -= dureeStimulusTestT3A;
         if (finFenetre < DUREE_SEQUENCE_TEST_T3A * 1000) {
             creerStimulusNBackTestT3A();
-            if (palier >= 2) creerStimulusCouleurTestT3A();
-            if (palier >= 3) creerStimulusCommandeTestT3A();
         }
     }
+
+    if (palier >= 2) actualiserStimulusCouleurTestT3A(tempsSequence);
+    if (palier >= 3) actualiserStimulusCommandeTestT3A(tempsSequence);
 
     if (tempsSequence >= DUREE_SEQUENCE_TEST_T3A * 1000) {
         indexSequenceTestT3A++;
@@ -1519,15 +1584,23 @@ document.addEventListener('keydown', event => {
     if (jeuActif !== 'test-t3a' || event.repeat ||
         indexSequenceTestT3A >= sequencesTestT3A.length) return;
     const touche = event.key.toLowerCase();
-    if (touche === '9' || touche === '0') {
+    const toucheNumerique = event.code.startsWith('Digit')
+        ? event.code.slice(5)
+        : event.code.startsWith('Numpad')
+            ? event.code.slice(6)
+            : '';
+    if ((touche === 'a' || touche === 'z') &&
+        sequencesTestT3A[indexSequenceTestT3A] >= 2) {
         event.preventDefault();
-        repondreNBackTestT3A(touche);
-    } else if (touche === 'a' || touche === 'z') {
+        repondreCouleurTestT3A(touche);
+    } else if (event.shiftKey && (toucheNumerique === '9' || toucheNumerique === '0')) {
         event.preventDefault();
-        if (sequencesTestT3A[indexSequenceTestT3A] >= 2) repondreCouleurTestT3A(touche);
-    } else if (touche === '1' || touche === '2' || touche === '3') {
+        repondreNBackTestT3A(toucheNumerique);
+    } else if (event.shiftKey &&
+        ['1', '2', '3'].includes(toucheNumerique) &&
+        sequencesTestT3A[indexSequenceTestT3A] >= 3) {
         event.preventDefault();
-        if (sequencesTestT3A[indexSequenceTestT3A] >= 3) repondreCommandeTestT3A(touche);
+        repondreCommandeTestT3A(toucheNumerique);
     }
 });
 

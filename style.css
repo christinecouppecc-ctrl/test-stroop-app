@@ -278,6 +278,35 @@ h3 {
     font-size: 15px;
 }
 
+.test-t3a-instructions {
+    margin: 14px 0 20px;
+    padding: 16px 20px;
+    border: 1px solid #dfe3fb;
+    border-radius: 12px;
+    background: #f8f8fc;
+    text-align: left;
+}
+
+.test-t3a-instructions h3 {
+    margin: 0 0 10px;
+    color: #4f5fbd;
+}
+
+.test-t3a-instructions ul {
+    padding-left: 22px;
+}
+
+.test-t3a-instructions li {
+    margin: 8px 0;
+    color: #444;
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.test-t3a-instructions li:last-child {
+    margin-bottom: 0;
+}
+
 .test-t3a-options > select,
 .test-t3a-config-grid input {
     padding: 8px 10px;
