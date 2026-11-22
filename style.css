@@ -666,7 +666,7 @@ body.t3a-active #game-prompt {
     align-items: center;
     justify-content: center;
     border-radius: 18px;
-    background: #667eea;
+    background: transparent;
     color: #fff;
     font-size: clamp(20px, 4vh, 32px);
     font-weight: bold;
