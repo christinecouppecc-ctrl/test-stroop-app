@@ -921,6 +921,11 @@ body.test-t3a-active #screen-game.test-t3a-game-active.hidden {
     bottom: 16px;
 }
 
+#test-t3a-arrow-panel {
+    bottom: 16px;
+    left: 16px;
+}
+
 .test-t3a-nback-stimulus {
     display: flex;
     min-width: 100px;
@@ -937,6 +942,18 @@ body.test-t3a-active #screen-game.test-t3a-game-active.hidden {
     height: 92px;
     border: 1px solid rgba(0, 0, 0, 0.12);
     border-radius: 8px;
+}
+
+.test-t3a-arrow-stimulus {
+    display: flex;
+    min-width: 92px;
+    min-height: 92px;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    font-size: 76px;
+    font-weight: bold;
+    line-height: 1;
 }
 
 .test-t3a-command {
@@ -992,5 +1009,11 @@ body.test-t3a-active #screen-game.test-t3a-game-active.hidden {
     .test-t3a-color-stimulus {
         width: 64px;
         height: 64px;
+    }
+
+    .test-t3a-arrow-stimulus {
+        min-width: 64px;
+        min-height: 64px;
+        font-size: 54px;
     }
 }

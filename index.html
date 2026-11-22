@@ -48,6 +48,7 @@
                     <span class="game-icon" aria-hidden="true">◉◉</span>
                     <strong>Multitâche</strong>
                     <span>Entraînez votre attention sur plusieurs tâches.</span>
+                    <span class="game-availability">Uniquement sur ordinateur, pas sur téléphone.</span>
                 </button>
             </div>
         </div>
@@ -64,7 +65,8 @@
                 <button class="game-card" type="button" data-game="test-t3a">
                     <span class="game-icon" aria-hidden="true">3×</span>
                     <strong>Test T3A</strong>
-                    <span>Gérez jusqu’à trois tâches en parallèle.</span>
+                    <span>Gérez plusieurs tâches en parallèle.</span>
+                    <span class="game-availability">Uniquement sur ordinateur, pas sur téléphone.</span>
                 </button>
             </div>
             <button id="btn-multitache-back" class="btn-secondary">← Retour aux jeux</button>
@@ -96,7 +98,7 @@
                 <h3>Consignes du Test T3A</h3>
                 <ul>
                     <li><strong>Palier 1 — N-Back :</strong> observez la lettre en haut à gauche, qui change toutes les 3 secondes. Appuyez sur 9 si elle est identique à celle présentée N essais plus tôt, sinon sur 0.</li>
-                    <li><strong>Palier 2 — Carré :</strong> un carré rouge ou jaune apparaît en bas à droite à un rythme aléatoire, environ toutes les 4,5 à 6,5 secondes, pendant 2 secondes. Rouge : A · Jaune : Z.</li>
+                    <li><strong>Palier 2 — Carré et flèche :</strong> un carré rouge ou jaune apparaît en bas à droite environ toutes les 4,5 à 6,5 secondes, pendant 2 secondes. Rouge : A · Jaune : Z. Une flèche apparaît en bas à gauche environ toutes les 8 à 10 secondes, pendant 2 secondes. Appuyez sur la flèche correspondante du clavier.</li>
                     <li><strong>Palier 3 — Consigne :</strong> une consigne centrale apparaît à un rythme aléatoire, environ toutes les 6,5 à 8,5 secondes, pendant 2 secondes. Exécutez-la avec 1, 2 ou 3.</li>
                     <li><strong>Clavier :</strong> les chiffres peuvent être saisis sur la rangée supérieure ou le pavé numérique, sans MAJ.</li>
                     <li><strong>Résultats :</strong> chaque tâche est évaluée séparément. La touche associée correcte est une réussite; une autre touche associée ou l’absence de réponse est une erreur. Les touches ne sont comptées que pour leur tâche.</li>
@@ -171,7 +173,7 @@
                         <input type="number" id="test-t3a-count-2" min="1" max="10" value="4">
                     </fieldset>
                     <fieldset>
-                        <legend>Palier 3 · N-Back + carré + consigne</legend>
+                        <legend>Palier 3 · N-Back + carré + flèche + consigne</legend>
                         <label for="test-t3a-count-3">Nombre de séquences :</label>
                         <input type="number" id="test-t3a-count-3" min="1" max="10" value="4">
                     </fieldset>
@@ -249,6 +251,10 @@
                     <section id="test-t3a-nback-panel" class="test-t3a-panel">
                         <h3>N-Back</h3>
                         <div id="test-t3a-nback-stimulus" class="test-t3a-nback-stimulus"></div>
+                    </section>
+                    <section id="test-t3a-arrow-panel" class="test-t3a-panel hidden">
+                        <h3>Flèche</h3>
+                        <div id="test-t3a-arrow-stimulus" class="test-t3a-arrow-stimulus" role="img"></div>
                     </section>
                     <div id="test-t3a-command" class="test-t3a-command hidden"></div>
                     <section id="test-t3a-color-panel" class="test-t3a-panel hidden">

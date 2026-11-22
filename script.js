@@ -57,7 +57,7 @@ const JEUX = {
         nom: 'Test T3A',
         titreResultats: 'Résultats du Test T3A',
         instructions: 'Les consignes de chaque palier sont détaillées ci-dessous.',
-        prompt: 'N-Back : 9 identique, 0 différent · Carré : A rouge, Z jaune · Consigne : 1, 2 ou 3.'
+        prompt: 'N-Back : 9 identique, 0 différent · Carré : A rouge, Z jaune · Flèche : touche directionnelle · Consigne : 1, 2 ou 3.'
     }
 };
 
@@ -149,6 +149,8 @@ const testT3aTimeLabel = document.getElementById('test-t3a-time');
 const testT3aLiveScore = document.getElementById('test-t3a-live-score');
 const testT3aNbackPanel = document.getElementById('test-t3a-nback-panel');
 const testT3aNbackStimulus = document.getElementById('test-t3a-nback-stimulus');
+const testT3aArrowPanel = document.getElementById('test-t3a-arrow-panel');
+const testT3aArrowStimulus = document.getElementById('test-t3a-arrow-stimulus');
 const testT3aCommand = document.getElementById('test-t3a-command');
 const testT3aColorPanel = document.getElementById('test-t3a-color-panel');
 const testT3aColorStimulus = document.getElementById('test-t3a-color-stimulus');
@@ -265,13 +267,23 @@ let reactionsT3A = [];
 const DUREE_SEQUENCE_TEST_T3A = 90;
 const DUREE_FENETRE_NBACK_TEST_T3A = 3000;
 const DUREE_AFFICHAGE_COULEUR_TEST_T3A = 2000;
+const DUREE_AFFICHAGE_FLECHE_TEST_T3A = 2000;
 const DUREE_AFFICHAGE_CONSIGNE_TEST_T3A = 2000;
 const INTERVALLE_COULEUR_MIN_TEST_T3A = 4500;
 const INTERVALLE_COULEUR_MAX_TEST_T3A = 6500;
+const INTERVALLE_FLECHE_MIN_TEST_T3A = 8000;
+const INTERVALLE_FLECHE_MAX_TEST_T3A = 10000;
 const INTERVALLE_CONSIGNE_MIN_TEST_T3A = 6500;
 const INTERVALLE_CONSIGNE_MAX_TEST_T3A = 8500;
 const DECALAGE_COULEUR_TEST_T3A = 1200;
+const DECALAGE_FLECHE_TEST_T3A = 3600;
 const DECALAGE_CONSIGNE_TEST_T3A = 2400;
+const FLECHES_TEST_T3A = [
+    { code: 'ArrowUp', symbole: '↑', nom: 'vers le haut' },
+    { code: 'ArrowDown', symbole: '↓', nom: 'vers le bas' },
+    { code: 'ArrowLeft', symbole: '←', nom: 'vers la gauche' },
+    { code: 'ArrowRight', symbole: '→', nom: 'vers la droite' }
+];
 let paliersTestT3A = [1, 2, 3];
 let nombreSequencesTestT3A = { 1: 1, 2: 4, 3: 4 };
 let niveauNBackTestT3A = 2;
@@ -290,6 +302,11 @@ let reponseCouleurTestT3A = false;
 let couleurActiveTestT3A = false;
 let prochaineCouleurTestT3A = 0;
 let finCouleurTestT3A = 0;
+let flecheTestT3A = null;
+let reponseFlecheTestT3A = false;
+let flecheActiveTestT3A = false;
+let prochaineFlecheTestT3A = 0;
+let finFlecheTestT3A = 0;
 let commandeTestT3A = '';
 let reponseCommandeTestT3A = false;
 let commandeActiveTestT3A = false;
@@ -1275,6 +1292,7 @@ function initialiserScoresTestT3A() {
         scoresTestT3A[palier] = {
             nback: creerCompteurTestT3A(),
             carre: creerCompteurTestT3A(),
+            fleche: creerCompteurTestT3A(),
             consigne: creerCompteurTestT3A()
         };
     }
@@ -1317,12 +1335,13 @@ function texteResultatsTestT3A() {
     const libellesTaches = {
         nback: 'N-Back',
         carre: 'Carrés',
+        fleche: 'Flèches',
         consigne: 'Consignes'
     };
     return paliersTestT3A.map(palier => {
         const compteurs = comptePalierTestT3A(palier);
         const taches = ['nback'];
-        if (palier >= 2) taches.push('carre');
+        if (palier >= 2) taches.push('carre', 'fleche');
         if (palier >= 3) taches.push('consigne');
         return 'Palier ' + palier + '\n' + taches
             .map(tache => texteCompteurTestT3A(libellesTaches[tache], compteurs[tache]))
@@ -1331,7 +1350,7 @@ function texteResultatsTestT3A() {
 }
 
 function resumeScoresEnregistresTestT3A(partie) {
-    const libelles = { nback: 'N-Back', carre: 'Carrés', consigne: 'Consignes' };
+    const libelles = { nback: 'N-Back', carre: 'Carrés', fleche: 'Flèches', consigne: 'Consignes' };
     if (!partie.scoresParPalier) return partie.precision + '%';
     return Object.keys(partie.scoresParPalier).map(palier => {
         const taches = partie.scoresParPalier[palier];
@@ -1344,7 +1363,7 @@ function resumeScoresEnregistresTestT3A(partie) {
 
 function resumeTendancesEnregistreesTestT3A(partie) {
     if (!partie.scoresParPalier) return '—';
-    const libelles = { nback: 'N-Back', carre: 'Carrés', consigne: 'Consignes' };
+    const libelles = { nback: 'N-Back', carre: 'Carrés', fleche: 'Flèches', consigne: 'Consignes' };
     return Object.keys(partie.scoresParPalier).map(palier =>
         Object.keys(partie.scoresParPalier[palier]).map(tache =>
             'P' + palier + ' ' + libelles[tache] + ' ' +
@@ -1358,7 +1377,7 @@ function calculerPrecisionTestT3A() {
     let erreurs = 0;
     paliersTestT3A.forEach(palier => {
         const compteurs = comptePalierTestT3A(palier);
-        ['nback', ...(palier >= 2 ? ['carre'] : []), ...(palier >= 3 ? ['consigne'] : [])]
+        ['nback', ...(palier >= 2 ? ['carre', 'fleche'] : []), ...(palier >= 3 ? ['consigne'] : [])]
             .forEach(tache => {
                 reussites += compteurs[tache].reussites;
                 erreurs += compteurs[tache].erreurs;
@@ -1420,6 +1439,33 @@ function actualiserStimulusCouleurTestT3A(tempsSequence) {
     }
 }
 
+function creerStimulusFlecheTestT3A(tempsSequence) {
+    flecheTestT3A = FLECHES_TEST_T3A[Math.floor(Math.random() * FLECHES_TEST_T3A.length)];
+    reponseFlecheTestT3A = false;
+    flecheActiveTestT3A = true;
+    finFlecheTestT3A = tempsSequence + DUREE_AFFICHAGE_FLECHE_TEST_T3A;
+    prochaineFlecheTestT3A = tempsSequence + intervalleAleatoireTestT3A(
+        INTERVALLE_FLECHE_MIN_TEST_T3A,
+        INTERVALLE_FLECHE_MAX_TEST_T3A
+    );
+    testT3aArrowPanel.classList.remove('hidden');
+    testT3aArrowStimulus.textContent = flecheTestT3A.symbole;
+    testT3aArrowStimulus.setAttribute('aria-label', 'Flèche ' + flecheTestT3A.nom);
+}
+
+function actualiserStimulusFlecheTestT3A(tempsSequence) {
+    if (flecheActiveTestT3A && tempsSequence >= finFlecheTestT3A) {
+        if (!reponseFlecheTestT3A) enregistrerEssaiTestT3A('fleche', false);
+        flecheActiveTestT3A = false;
+        testT3aArrowPanel.classList.add('hidden');
+    }
+
+    if (!flecheActiveTestT3A && tempsSequence >= prochaineFlecheTestT3A &&
+        tempsSequence + DUREE_AFFICHAGE_FLECHE_TEST_T3A <= DUREE_SEQUENCE_TEST_T3A * 1000) {
+        creerStimulusFlecheTestT3A(tempsSequence);
+    }
+}
+
 function creerStimulusCommandeTestT3A(tempsSequence) {
     commandeTestT3A = String(1 + Math.floor(Math.random() * 3));
     reponseCommandeTestT3A = false;
@@ -1452,6 +1498,7 @@ function actualiserScoreTestT3A() {
     const compteurs = comptePalierTestT3A(palier);
     const taches = ['N-Back ' + compteurs.nback.reussites + '/' + compteurs.nback.erreurs];
     if (palier >= 2) taches.push('Carré ' + compteurs.carre.reussites + '/' + compteurs.carre.erreurs);
+    if (palier >= 2) taches.push('Flèches ' + compteurs.fleche.reussites + '/' + compteurs.fleche.erreurs);
     if (palier >= 3) taches.push('Consigne ' + compteurs.consigne.reussites + '/' + compteurs.consigne.erreurs);
     testT3aLiveScore.textContent = taches.join(' · ');
 }
@@ -1471,6 +1518,12 @@ function repondreCouleurTestT3A(touche) {
         (touche !== 'a' && touche !== 'z')) return;
     reponseCouleurTestT3A = true;
     enregistrerEssaiTestT3A('carre', touche === (couleurTestT3A === 'rouge' ? 'a' : 'z'));
+}
+
+function repondreFlecheTestT3A(touche) {
+    if (!flecheActiveTestT3A || reponseFlecheTestT3A) return;
+    reponseFlecheTestT3A = true;
+    enregistrerEssaiTestT3A('fleche', touche === flecheTestT3A.code);
 }
 
 function repondreCommandeTestT3A(touche) {
@@ -1499,13 +1552,18 @@ function demarrerSequenceTestT3A() {
     testT3aTimeLabel.textContent = '1:30';
     testT3aNbackPanel.classList.remove('hidden');
     testT3aColorPanel.classList.add('hidden');
+    testT3aArrowPanel.classList.add('hidden');
     testT3aCommand.classList.add('hidden');
     couleurActiveTestT3A = false;
+    flecheActiveTestT3A = false;
     commandeActiveTestT3A = false;
     reponseCouleurTestT3A = false;
+    reponseFlecheTestT3A = false;
     reponseCommandeTestT3A = false;
     prochaineCouleurTestT3A = DECALAGE_COULEUR_TEST_T3A +
         intervalleAleatoireTestT3A(-300, 300);
+    prochaineFlecheTestT3A = DECALAGE_FLECHE_TEST_T3A +
+        intervalleAleatoireTestT3A(-400, 400);
     prochaineCommandeTestT3A = DECALAGE_CONSIGNE_TEST_T3A +
         intervalleAleatoireTestT3A(-400, 400);
     testT3aCommand.textContent = '';
@@ -1549,7 +1607,10 @@ function tickTestT3A() {
         }
     }
 
-    if (palier >= 2) actualiserStimulusCouleurTestT3A(tempsSequence);
+    if (palier >= 2) {
+        actualiserStimulusCouleurTestT3A(tempsSequence);
+        actualiserStimulusFlecheTestT3A(tempsSequence);
+    }
     if (palier >= 3) actualiserStimulusCommandeTestT3A(tempsSequence);
 
     if (tempsSequence >= DUREE_SEQUENCE_TEST_T3A * 1000) {
@@ -1578,6 +1639,10 @@ document.addEventListener('keydown', event => {
     if ((touche === 'a' || touche === 'z') && palier >= 2) {
         event.preventDefault();
         repondreCouleurTestT3A(touche);
+    } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code) &&
+        palier >= 2) {
+        event.preventDefault();
+        repondreFlecheTestT3A(event.code);
     } else if (toucheNumerique === '9' || toucheNumerique === '0') {
         event.preventDefault();
         repondreNBackTestT3A(toucheNumerique);
@@ -2035,7 +2100,7 @@ function finDuJeu() {
         partie.versionScoringT3A = 6;
     }
     if (estTestT3A) {
-        partie.versionScoringTestT3A = 1;
+        partie.versionScoringTestT3A = 2;
         partie.paliers = paliersTestT3A.slice();
         partie.nombreSequencesParPalier = Object.assign({}, nombreSequencesTestT3A);
         partie.niveauNBackTestT3A = niveauNBackTestT3A;
@@ -2043,7 +2108,7 @@ function finDuJeu() {
         paliersTestT3A.forEach(palier => {
             partie.scoresParPalier[palier] = {};
             const compteurs = comptePalierTestT3A(palier);
-            ['nback', ...(palier >= 2 ? ['carre'] : []), ...(palier >= 3 ? ['consigne'] : [])]
+            ['nback', ...(palier >= 2 ? ['carre', 'fleche'] : []), ...(palier >= 3 ? ['consigne'] : [])]
                 .forEach(tache => {
                     partie.scoresParPalier[palier][tache] = {
                         reussites: compteurs[tache].reussites,
