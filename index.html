@@ -95,11 +95,11 @@
             <div id="test-t3a-instructions" class="rule test-t3a-instructions hidden">
                 <h3>Consignes du Test T3A</h3>
                 <ul>
-                    <li><strong>Palier 1 — N-Back :</strong> observez la lettre en haut à gauche. Appuyez sur MAJ + 9 si elle est identique à celle présentée N essais plus tôt, sinon sur MAJ + 0.</li>
+                    <li><strong>Palier 1 — N-Back :</strong> observez la lettre en haut à gauche, qui change toutes les 3 secondes. Appuyez sur 9 si elle est identique à celle présentée N essais plus tôt, sinon sur 0.</li>
                     <li><strong>Palier 2 — Carré :</strong> un carré rouge ou jaune apparaît en bas à droite à un rythme aléatoire, environ toutes les 4,5 à 6,5 secondes, pendant 2 secondes. Rouge : A · Jaune : Z.</li>
-                    <li><strong>Palier 3 — Consigne :</strong> une consigne centrale apparaît à un rythme aléatoire, environ toutes les 6,5 à 8,5 secondes, pendant 2 secondes. Exécutez-la avec MAJ + 1, 2 ou 3.</li>
-                    <li><strong>Clavier :</strong> maintenez la touche MAJ enfoncée avec les chiffres 0, 1, 2, 3 et 9, y compris sur le pavé numérique.</li>
-                    <li><strong>Résultats :</strong> chaque tâche est évaluée séparément. Une bonne réponse est une réussite; une mauvaise touche ou une absence de réponse est une erreur.</li>
+                    <li><strong>Palier 3 — Consigne :</strong> une consigne centrale apparaît à un rythme aléatoire, environ toutes les 6,5 à 8,5 secondes, pendant 2 secondes. Exécutez-la avec 1, 2 ou 3.</li>
+                    <li><strong>Clavier :</strong> les chiffres peuvent être saisis sur la rangée supérieure ou le pavé numérique, sans MAJ.</li>
+                    <li><strong>Résultats :</strong> chaque tâche est évaluée séparément. La touche associée correcte est une réussite; une autre touche associée ou l’absence de réponse est une erreur. Les touches ne sont comptées que pour leur tâche.</li>
                 </ul>
             </div>
 
@@ -162,22 +162,16 @@
                             <option value="3">N-3</option>
                             <option value="4">N-4</option>
                         </select>
-                        <label for="test-t3a-nback-duration">Durée par stimulus (s) :</label>
-                        <input type="number" id="test-t3a-nback-duration" min="2" max="10" value="3">
                         <label for="test-t3a-count-1">Nombre de séquences :</label>
                         <input type="number" id="test-t3a-count-1" min="1" max="10" value="1">
                     </fieldset>
                     <fieldset>
                         <legend>Palier 2 · N-Back + carré</legend>
-                        <label for="test-t3a-duration-2">Durée par stimulus N-Back (s) :</label>
-                        <input type="number" id="test-t3a-duration-2" min="2" max="10" value="3">
                         <label for="test-t3a-count-2">Nombre de séquences :</label>
                         <input type="number" id="test-t3a-count-2" min="1" max="10" value="4">
                     </fieldset>
                     <fieldset>
                         <legend>Palier 3 · N-Back + carré + consigne</legend>
-                        <label for="test-t3a-duration-3">Durée par stimulus N-Back (s) :</label>
-                        <input type="number" id="test-t3a-duration-3" min="2" max="10" value="3">
                         <label for="test-t3a-count-3">Nombre de séquences :</label>
                         <input type="number" id="test-t3a-count-3" min="1" max="10" value="4">
                     </fieldset>

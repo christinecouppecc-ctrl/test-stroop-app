@@ -57,7 +57,7 @@ const JEUX = {
         nom: 'Test T3A',
         titreResultats: 'Résultats du Test T3A',
         instructions: 'Les consignes de chaque palier sont détaillées ci-dessous.',
-        prompt: 'N-Back : MAJ+9 identique, MAJ+0 différent · Carré : A rouge, Z jaune · Consigne : MAJ+1, 2 ou 3.'
+        prompt: 'N-Back : 9 identique, 0 différent · Carré : A rouge, Z jaune · Consigne : 1, 2 ou 3.'
     }
 };
 
@@ -111,13 +111,6 @@ const t3aOptions = document.getElementById('t3a-options');
 const testT3aOptions = document.getElementById('test-t3a-options');
 const testT3aCombinationInput = document.getElementById('test-t3a-combination');
 const testT3aNbackLevelInput = document.getElementById('test-t3a-nback-level');
-const testT3aNbackDurationInput = document.getElementById('test-t3a-nback-duration');
-const testT3aDurationInputs = [
-    null,
-    testT3aNbackDurationInput,
-    document.getElementById('test-t3a-duration-2'),
-    document.getElementById('test-t3a-duration-3')
-];
 const testT3aCountInputs = [
     null,
     document.getElementById('test-t3a-count-1'),
@@ -270,6 +263,7 @@ let decisionsFormeT3A = 0;
 let decisionsCouleurT3A = 0;
 let reactionsT3A = [];
 const DUREE_SEQUENCE_TEST_T3A = 90;
+const DUREE_FENETRE_NBACK_TEST_T3A = 3000;
 const DUREE_AFFICHAGE_COULEUR_TEST_T3A = 2000;
 const DUREE_AFFICHAGE_CONSIGNE_TEST_T3A = 2000;
 const INTERVALLE_COULEUR_MIN_TEST_T3A = 4500;
@@ -280,7 +274,6 @@ const DECALAGE_COULEUR_TEST_T3A = 1200;
 const DECALAGE_CONSIGNE_TEST_T3A = 2400;
 let paliersTestT3A = [1, 2, 3];
 let nombreSequencesTestT3A = { 1: 1, 2: 4, 3: 4 };
-let dureesStimuliTestT3A = { 1: 3, 2: 3, 3: 3 };
 let niveauNBackTestT3A = 2;
 let sequencesTestT3A = [];
 let indexSequenceTestT3A = 0;
@@ -288,7 +281,6 @@ let horlogeTestT3A = null;
 let dernierTickTestT3A = 0;
 let tempsEcouleSequenceTestT3A = 0;
 let tempsFenetreTestT3A = 0;
-let dureeStimulusTestT3A = 0;
 let historiqueNBackTestT3A = [];
 let stimulusNBackTestT3A = '';
 let cibleNBackTestT3A = false;
@@ -389,15 +381,10 @@ function actualiserConfigurationTestT3A() {
     testT3aNbackLevelInput.value = String(niveauNBackTestT3A);
 
     for (let palier = 1; palier <= 3; palier++) {
-        const duree = Number(testT3aDurationInputs[palier].value);
         const nombreSequences = Number(testT3aCountInputs[palier].value);
-        dureesStimuliTestT3A[palier] = Number.isFinite(duree)
-            ? Math.min(10, Math.max(2, duree))
-            : 3;
         nombreSequencesTestT3A[palier] = Number.isFinite(nombreSequences)
             ? Math.min(10, Math.max(1, Math.floor(nombreSequences)))
             : [0, 1, 4, 4][palier];
-        testT3aDurationInputs[palier].value = String(dureesStimuliTestT3A[palier]);
         testT3aCountInputs[palier].value = String(nombreSequencesTestT3A[palier]);
         testT3aCountInputs[palier].disabled = !paliersTestT3A.includes(palier);
     }
@@ -560,8 +547,7 @@ nbackDurationInput.addEventListener('change', () => {
     });
 });
 
-[testT3aCombinationInput, testT3aNbackLevelInput, ...testT3aDurationInputs.slice(1),
-    ...testT3aCountInputs.slice(1)].forEach(input => {
+[testT3aCombinationInput, testT3aNbackLevelInput, ...testT3aCountInputs.slice(1)].forEach(input => {
     input.addEventListener('change', () => {
         actualiserConfigurationTestT3A();
         if (jeuActif === 'test-t3a') afficherConfigurationJeu();
@@ -1502,7 +1488,6 @@ function demarrerSequenceTestT3A() {
     }
 
     const palier = sequencesTestT3A[indexSequenceTestT3A];
-    dureeStimulusTestT3A = dureesStimuliTestT3A[palier] * 1000;
     dernierTickTestT3A = performance.now();
     tempsEcouleSequenceTestT3A = 0;
     tempsFenetreTestT3A = 0;
@@ -1553,12 +1538,12 @@ function tickTestT3A() {
         Math.ceil((DUREE_SEQUENCE_TEST_T3A * 1000 - tempsSequence) / 1000)
     ));
 
-    while (tempsFenetreTestT3A >= dureeStimulusTestT3A &&
-        tempsSequence - tempsFenetreTestT3A + dureeStimulusTestT3A <=
+    while (tempsFenetreTestT3A >= DUREE_FENETRE_NBACK_TEST_T3A &&
+        tempsSequence - tempsFenetreTestT3A + DUREE_FENETRE_NBACK_TEST_T3A <=
             DUREE_SEQUENCE_TEST_T3A * 1000) {
-        const finFenetre = tempsSequence - tempsFenetreTestT3A + dureeStimulusTestT3A;
+        const finFenetre = tempsSequence - tempsFenetreTestT3A + DUREE_FENETRE_NBACK_TEST_T3A;
         evaluerFenetreTestT3A();
-        tempsFenetreTestT3A -= dureeStimulusTestT3A;
+        tempsFenetreTestT3A -= DUREE_FENETRE_NBACK_TEST_T3A;
         if (finFenetre < DUREE_SEQUENCE_TEST_T3A * 1000) {
             creerStimulusNBackTestT3A();
         }
@@ -1589,16 +1574,14 @@ document.addEventListener('keydown', event => {
         : event.code.startsWith('Numpad')
             ? event.code.slice(6)
             : '';
-    if ((touche === 'a' || touche === 'z') &&
-        sequencesTestT3A[indexSequenceTestT3A] >= 2) {
+    const palier = sequencesTestT3A[indexSequenceTestT3A];
+    if ((touche === 'a' || touche === 'z') && palier >= 2) {
         event.preventDefault();
         repondreCouleurTestT3A(touche);
-    } else if (event.shiftKey && (toucheNumerique === '9' || toucheNumerique === '0')) {
+    } else if (toucheNumerique === '9' || toucheNumerique === '0') {
         event.preventDefault();
         repondreNBackTestT3A(toucheNumerique);
-    } else if (event.shiftKey &&
-        ['1', '2', '3'].includes(toucheNumerique) &&
-        sequencesTestT3A[indexSequenceTestT3A] >= 3) {
+    } else if (['1', '2', '3'].includes(toucheNumerique) && palier >= 3) {
         event.preventDefault();
         repondreCommandeTestT3A(toucheNumerique);
     }
@@ -2056,7 +2039,6 @@ function finDuJeu() {
         partie.paliers = paliersTestT3A.slice();
         partie.nombreSequencesParPalier = Object.assign({}, nombreSequencesTestT3A);
         partie.niveauNBackTestT3A = niveauNBackTestT3A;
-        partie.dureesStimuliTestT3A = Object.assign({}, dureesStimuliTestT3A);
         partie.scoresParPalier = {};
         paliersTestT3A.forEach(palier => {
             partie.scoresParPalier[palier] = {};
